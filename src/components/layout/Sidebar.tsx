@@ -1,54 +1,149 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import { Home, Users, MessageCircle, User, Search, Flag } from 'lucide-react';
+import { 
+  Home, 
+  Users, 
+  MessageCircle, 
+  User, 
+  Search, 
+  Calendar, 
+  Store, 
+  Settings,
+  Compass,
+  Bell,
+  Bookmark,
+  TrendingUp,
+  X
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-const menuItems = [
+interface SidebarProps {
+  className?: string;
+  onClose?: () => void;
+}
+
+const mainMenuItems = [
   { icon: Home, label: 'Feed', path: '/feed' },
-  { icon: Search, label: 'Explorar', path: '/explore' },
-  { icon: Users, label: 'Comunidade', path: '/community' },
-  { icon: MessageCircle, label: 'Mensagens', path: '/messages' },
-  { icon: User, label: 'Perfil', path: '/profile' },
+  { icon: Compass, label: 'Explorar', path: '/explore' },
+  { icon: Search, label: 'Buscar', path: '/search' },
+  { icon: MessageCircle, label: 'Mensagens', path: '/messages', badge: true },
 ];
 
-export function Sidebar() {
+const communityMenuItems = [
+  { icon: Users, label: 'Comunidade', path: '/community' },
+  { icon: Calendar, label: 'Eventos', path: '/events' },
+  { icon: Store, label: 'Marketplace', path: '/marketplace' },
+];
+
+const personalMenuItems = [
+  { icon: Bookmark, label: 'Salvos', path: '/saved' },
+  { icon: Settings, label: 'Configurações', path: '/settings' },
+];
+
+export function Sidebar({ className, onClose }: SidebarProps) {
   const location = useLocation();
   const { profile } = useAuth();
 
-  return (
-    <aside className="hidden lg:flex flex-col fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-card border-r border-border p-4">
-      <nav className="space-y-2">
-        {menuItems.map((item) => {
-          const path = item.path === '/profile' ? `/profile/${profile?.username}` : item.path;
-          const isActive = location.pathname === path || 
-            (item.path === '/profile' && location.pathname.startsWith('/profile/'));
+  const renderMenuItem = (item: typeof mainMenuItems[0]) => {
+    const path = item.path === '/profile' ? `/profile/${profile?.username}` : item.path;
+    const isActive = location.pathname === path || 
+      (item.path === '/profile' && location.pathname.startsWith('/profile/')) ||
+      (item.path === '/messages' && location.pathname.startsWith('/messages/'));
 
-          return (
-            <Link
-              key={item.path}
-              to={path}
-              className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
-                isActive
-                  ? 'gradient-primary text-primary-foreground shadow-soft'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+    return (
+      <Link
+        key={item.path}
+        to={path}
+        onClick={onClose}
+        className={cn(
+          'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
+          isActive
+            ? 'gradient-primary text-primary-foreground shadow-soft'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
+      >
+        <item.icon className={cn('w-5 h-5 transition-transform group-hover:scale-110', isActive && 'scale-110')} />
+        <span className="flex-1">{item.label}</span>
+        {item.badge && (
+          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        )}
+      </Link>
+    );
+  };
+
+  return (
+    <aside className={cn(
+      'flex flex-col fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-card border-r border-border',
+      className
+    )}>
+      {/* Close button for mobile */}
+      {onClose && (
+        <div className="flex justify-end p-2 lg:hidden">
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Main navigation */}
+        <nav className="space-y-1">
+          {mainMenuItems.map(renderMenuItem)}
+        </nav>
+
+        {/* Community section */}
+        <div>
+          <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Comunidade
+          </h3>
+          <nav className="space-y-1">
+            {communityMenuItems.map(renderMenuItem)}
+          </nav>
+        </div>
+
+        {/* Personal section */}
+        <div>
+          <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Pessoal
+          </h3>
+          <nav className="space-y-1">
+            {personalMenuItems.map(renderMenuItem)}
+          </nav>
+        </div>
+
+        {/* Trending */}
+        <div className="bg-muted/50 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold">Trending em Timbó</span>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">#FestivalDePrimavera</span>
+              <span className="text-xs text-muted-foreground">120 posts</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">#TimboFala</span>
+              <span className="text-xs text-muted-foreground">85 posts</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">#ComercioLocal</span>
+              <span className="text-xs text-muted-foreground">64 posts</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* User card */}
       {profile && (
-        <div className="mt-auto pt-4 border-t border-border">
+        <div className="p-4 border-t border-border">
           <Link 
             to={`/profile/${profile.username}`}
-            className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors"
+            onClick={onClose}
+            className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors group"
           >
-            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-semibold">
+            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-semibold group-hover:scale-105 transition-transform">
               {profile.full_name.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
