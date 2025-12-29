@@ -409,9 +409,12 @@ export type Database = {
           city: string
           cover_url: string | null
           created_at: string
+          facebook_url: string | null
           full_name: string
           id: string
+          instagram_url: string | null
           neighborhood: string
+          twitter_url: string | null
           updated_at: string
           username: string
         }
@@ -423,9 +426,12 @@ export type Database = {
           city?: string
           cover_url?: string | null
           created_at?: string
+          facebook_url?: string | null
           full_name: string
           id: string
+          instagram_url?: string | null
           neighborhood: string
+          twitter_url?: string | null
           updated_at?: string
           username: string
         }
@@ -437,9 +443,12 @@ export type Database = {
           city?: string
           cover_url?: string | null
           created_at?: string
+          facebook_url?: string | null
           full_name?: string
           id?: string
+          instagram_url?: string | null
           neighborhood?: string
+          twitter_url?: string | null
           updated_at?: string
           username?: string
         }
