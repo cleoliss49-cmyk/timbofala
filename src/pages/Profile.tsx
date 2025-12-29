@@ -1,0 +1,287 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { MainLayout } from '@/components/layout/MainLayout';
+import { PostCard } from '@/components/feed/PostCard';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { MapPin, Calendar, Settings, MessageCircle, UserPlus, UserMinus } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { EditProfileDialog } from '@/components/dialogs/EditProfileDialog';
+
+interface ProfileData {
+  id: string;
+  username: string;
+  full_name: string;
+  neighborhood: string;
+  city: string;
+  bio: string | null;
+  avatar_url: string | null;
+  cover_url: string | null;
+  created_at: string;
+}
+
+export default function Profile() {
+  const { username } = useParams<{ username: string }>();
+  const navigate = useNavigate();
+  const { user, profile: currentUserProfile, refreshProfile } = useAuth();
+  const { toast } = useToast();
+  
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+
+  const isOwnProfile = currentUserProfile?.username === username;
+
+  const fetchProfile = async () => {
+    if (!username) return;
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('username', username)
+      .maybeSingle();
+
+    if (error || !profile) {
+      navigate('/feed');
+      return;
+    }
+
+    setProfileData(profile);
+
+    // Fetch posts
+    const { data: userPosts } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        profiles!posts_user_id_fkey (
+          id,
+          username,
+          full_name,
+          avatar_url
+        ),
+        reactions (user_id),
+        comments (id)
+      `)
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false });
+
+    if (userPosts) {
+      setPosts(userPosts);
+    }
+
+    // Fetch followers count
+    const { count: followers } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', profile.id);
+
+    setFollowersCount(followers || 0);
+
+    // Fetch following count
+    const { count: following } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', profile.id);
+
+    setFollowingCount(following || 0);
+
+    // Check if current user is following
+    if (user && user.id !== profile.id) {
+      const { data: followData } = await supabase
+        .from('follows')
+        .select('id')
+        .eq('follower_id', user.id)
+        .eq('following_id', profile.id)
+        .maybeSingle();
+
+      setIsFollowing(!!followData);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    fetchProfile();
+  }, [username, user]);
+
+  const handleFollow = async () => {
+    if (!user || !profileData) return;
+
+    try {
+      if (isFollowing) {
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', profileData.id);
+
+        setIsFollowing(false);
+        setFollowersCount(prev => prev - 1);
+        toast({
+          title: 'Deixou de seguir',
+          description: `Você deixou de seguir ${profileData.full_name}`,
+        });
+      } else {
+        await supabase.from('follows').insert({
+          follower_id: user.id,
+          following_id: profileData.id,
+        });
+
+        setIsFollowing(true);
+        setFollowersCount(prev => prev + 1);
+        toast({
+          title: 'Seguindo!',
+          description: `Você agora segue ${profileData.full_name}`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível completar a ação.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="max-w-2xl mx-auto">
+          <Skeleton className="h-48 rounded-2xl mb-4" />
+          <Skeleton className="h-24 rounded-2xl" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!profileData) {
+    return null;
+  }
+
+  return (
+    <MainLayout>
+      <div className="max-w-2xl mx-auto">
+        {/* Cover & Avatar */}
+        <div className="relative mb-16">
+          <div className="h-48 rounded-2xl gradient-hero" />
+          
+          <div className="absolute -bottom-12 left-6">
+            <Avatar className="w-24 h-24 border-4 border-card shadow-lg">
+              <AvatarImage src={profileData.avatar_url || undefined} />
+              <AvatarFallback className="gradient-primary text-primary-foreground text-2xl">
+                {profileData.full_name.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+
+        {/* Profile Info */}
+        <div className="bg-card rounded-2xl shadow-card p-6 mb-6 border border-border">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-display font-bold">{profileData.full_name}</h1>
+              <p className="text-muted-foreground">@{profileData.username}</p>
+              
+              {profileData.bio && (
+                <p className="mt-3 text-foreground">{profileData.bio}</p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  {profileData.neighborhood}, {profileData.city}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  Entrou em {format(new Date(profileData.created_at), 'MMMM yyyy', { locale: ptBR })}
+                </span>
+              </div>
+
+              <div className="flex gap-4 mt-4">
+                <span className="text-sm">
+                  <strong className="text-foreground">{followingCount}</strong>{' '}
+                  <span className="text-muted-foreground">seguindo</span>
+                </span>
+                <span className="text-sm">
+                  <strong className="text-foreground">{followersCount}</strong>{' '}
+                  <span className="text-muted-foreground">seguidores</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              {isOwnProfile ? (
+                <Button variant="outline" onClick={() => setShowEditDialog(true)}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Editar perfil
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant={isFollowing ? 'outline' : 'default'}
+                    onClick={handleFollow}
+                  >
+                    {isFollowing ? (
+                      <>
+                        <UserMinus className="w-4 h-4 mr-2" />
+                        Deixar de seguir
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Seguir
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate(`/messages/${profileData.id}`)}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Posts */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold px-2">Publicações</h2>
+          {posts.length === 0 ? (
+            <div className="bg-card rounded-2xl p-8 shadow-card text-center border border-border">
+              <p className="text-muted-foreground">
+                {isOwnProfile
+                  ? 'Você ainda não fez nenhuma publicação.'
+                  : 'Este usuário ainda não fez nenhuma publicação.'}
+              </p>
+            </div>
+          ) : (
+            posts.map((post) => (
+              <PostCard key={post.id} post={post} onUpdate={fetchProfile} />
+            ))
+          )}
+        </div>
+      </div>
+
+      <EditProfileDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onUpdate={() => {
+          refreshProfile();
+          fetchProfile();
+        }}
+      />
+    </MainLayout>
+  );
+}
