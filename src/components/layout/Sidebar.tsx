@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -11,12 +12,13 @@ import {
   Store, 
   Settings,
   Compass,
-  Bell,
   Bookmark,
   TrendingUp,
-  X
+  X,
+  PlusCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CreatePostDialog } from '@/components/feed/CreatePostDialog';
 
 interface SidebarProps {
   className?: string;
@@ -44,6 +46,7 @@ const personalMenuItems = [
 export function Sidebar({ className, onClose }: SidebarProps) {
   const location = useLocation();
   const { profile } = useAuth();
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const renderMenuItem = (item: typeof mainMenuItems[0]) => {
     const path = item.path === '/profile' ? `/profile/${profile?.username}` : item.path;
@@ -73,86 +76,105 @@ export function Sidebar({ className, onClose }: SidebarProps) {
   };
 
   return (
-    <aside className={cn(
-      'flex flex-col fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-card border-r border-border',
-      className
-    )}>
-      {/* Close button for mobile */}
-      {onClose && (
-        <div className="flex justify-end p-2 lg:hidden">
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="w-5 h-5" />
-          </Button>
-        </div>
-      )}
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Main navigation */}
-        <nav className="space-y-1">
-          {mainMenuItems.map(renderMenuItem)}
-        </nav>
-
-        {/* Community section */}
-        <div>
-          <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Comunidade
-          </h3>
-          <nav className="space-y-1">
-            {communityMenuItems.map(renderMenuItem)}
-          </nav>
-        </div>
-
-        {/* Personal section */}
-        <div>
-          <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Pessoal
-          </h3>
-          <nav className="space-y-1">
-            {personalMenuItems.map(renderMenuItem)}
-          </nav>
-        </div>
-
-        {/* Trending */}
-        <div className="bg-muted/50 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold">Trending em Timbó</span>
+    <>
+      <aside className={cn(
+        'flex flex-col fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-card border-r border-border',
+        className
+      )}>
+        {/* Close button for mobile */}
+        {onClose && (
+          <div className="flex justify-end p-2 lg:hidden">
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
           </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">#FestivalDePrimavera</span>
-              <span className="text-xs text-muted-foreground">120 posts</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">#TimboFala</span>
-              <span className="text-xs text-muted-foreground">85 posts</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">#ComercioLocal</span>
-              <span className="text-xs text-muted-foreground">64 posts</span>
-            </div>
-          </div>
-        </div>
-      </div>
+        )}
 
-      {/* User card */}
-      {profile && (
-        <div className="p-4 border-t border-border">
-          <Link 
-            to={`/profile/${profile.username}`}
-            onClick={onClose}
-            className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors group"
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* Create button */}
+          <Button 
+            className="w-full gradient-primary text-white shadow-soft hover:shadow-hover"
+            onClick={() => {
+              setShowCreateDialog(true);
+              onClose?.();
+            }}
           >
-            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-semibold group-hover:scale-105 transition-transform">
-              {profile.full_name.charAt(0)}
+            <PlusCircle className="w-5 h-5 mr-2" />
+            Criar Publicação
+          </Button>
+
+          {/* Main navigation */}
+          <nav className="space-y-1">
+            {mainMenuItems.map(renderMenuItem)}
+          </nav>
+
+          {/* Community section */}
+          <div>
+            <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Comunidade
+            </h3>
+            <nav className="space-y-1">
+              {communityMenuItems.map(renderMenuItem)}
+            </nav>
+          </div>
+
+          {/* Personal section */}
+          <div>
+            <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Pessoal
+            </h3>
+            <nav className="space-y-1">
+              {personalMenuItems.map(renderMenuItem)}
+            </nav>
+          </div>
+
+          {/* Trending */}
+          <div className="bg-muted/50 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold">Trending em Timbó</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-foreground truncate">{profile.full_name}</p>
-              <p className="text-xs text-muted-foreground">@{profile.username}</p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">#FestivalDePrimavera</span>
+                <span className="text-xs text-muted-foreground">120 posts</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">#TimboFala</span>
+                <span className="text-xs text-muted-foreground">85 posts</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">#ComercioLocal</span>
+                <span className="text-xs text-muted-foreground">64 posts</span>
+              </div>
             </div>
-          </Link>
+          </div>
         </div>
-      )}
-    </aside>
+
+        {/* User card */}
+        {profile && (
+          <div className="p-4 border-t border-border">
+            <Link 
+              to={`/profile/${profile.username}`}
+              onClick={onClose}
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-semibold group-hover:scale-105 transition-transform">
+                {profile.full_name.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground truncate">{profile.full_name}</p>
+                <p className="text-xs text-muted-foreground">@{profile.username}</p>
+              </div>
+            </Link>
+          </div>
+        )}
+      </aside>
+
+      <CreatePostDialog 
+        open={showCreateDialog} 
+        onOpenChange={setShowCreateDialog}
+      />
+    </>
   );
 }
