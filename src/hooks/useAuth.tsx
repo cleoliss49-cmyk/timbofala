@@ -11,6 +11,11 @@ interface Profile {
   bio: string | null;
   avatar_url: string | null;
   cover_url: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  twitter_url: string | null;
+  tiktok_url: string | null;
+  kwai_url: string | null;
   accepted_terms: boolean;
   created_at: string;
   updated_at: string;
