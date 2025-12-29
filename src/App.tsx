@@ -12,6 +12,8 @@ import Messages from "./pages/Messages";
 import Search from "./pages/Search";
 import Explore from "./pages/Explore";
 import Community from "./pages/Community";
+import Events from "./pages/Events";
+import Marketplace from "./pages/Marketplace";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -34,6 +36,8 @@ const App = () => (
             <Route path="/search" element={<Search />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/community" element={<Community />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

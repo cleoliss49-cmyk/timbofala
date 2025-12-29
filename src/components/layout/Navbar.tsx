@@ -11,13 +11,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MessageCircle, Search, Bell, User, LogOut, Settings, Menu, X } from 'lucide-react';
+import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
+import { MessageCircle, Search, User, LogOut, Settings, Menu, Sparkles } from 'lucide-react';
 
-export function Navbar() {
+interface NavbarProps {
+  onMenuClick?: () => void;
+}
+
+export function Navbar({ onMenuClick }: NavbarProps) {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,32 +39,78 @@ export function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-lg border-b border-border z-50">
-      <div className="h-full px-4 flex items-center justify-between gap-4">
-        {/* Logo */}
-        <Link to="/feed" className="flex items-center gap-2 shrink-0">
-          <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-soft">
-            <MessageCircle className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="hidden sm:block text-xl font-display font-bold text-gradient">
-            Timbó Fala
-          </span>
-        </Link>
+      <div className="h-full px-4 flex items-center justify-between gap-4 max-w-[1800px] mx-auto">
+        {/* Left side */}
+        <div className="flex items-center gap-3">
+          {/* Mobile menu button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={onMenuClick}
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
 
-        {/* Search */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md hidden md:block">
+          {/* Logo */}
+          <Link to="/feed" className="flex items-center gap-2 shrink-0 group">
+            <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-soft group-hover:shadow-hover transition-shadow">
+              <MessageCircle className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div className="hidden sm:block">
+              <span className="text-xl font-display font-bold text-gradient">Timbó Fala</span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Center - Search */}
+        <form 
+          onSubmit={handleSearch} 
+          className={`flex-1 max-w-lg hidden md:block transition-all duration-300 ${
+            searchFocused ? 'max-w-xl' : ''
+          }`}
+        >
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
+              searchFocused ? 'text-primary' : 'text-muted-foreground'
+            }`} />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar pessoas por nome ou @username..."
-              className="pl-10 bg-muted/50"
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder="Buscar pessoas, posts, eventos..."
+              className={`pl-11 bg-muted/50 border-transparent focus:bg-card transition-all ${
+                searchFocused ? 'shadow-soft border-primary/50' : ''
+              }`}
             />
+            {searchFocused && searchQuery && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <kbd className="text-xs bg-muted px-2 py-1 rounded font-mono">Enter</kbd>
+              </div>
+            )}
           </div>
         </form>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
+        {/* Right side - Actions */}
+        <div className="flex items-center gap-1 md:gap-2">
+          {/* Mobile search */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => navigate('/search')}
+          >
+            <Search className="w-5 h-5" />
+          </Button>
+
+          {/* Premium badge (optional) */}
+          <Button variant="soft" size="sm" className="hidden lg:flex gap-1">
+            <Sparkles className="w-4 h-4" />
+            <span>Premium</span>
+          </Button>
+
+          {/* Messages */}
           <Button
             variant="ghost"
             size="icon"
@@ -69,22 +120,27 @@ export function Navbar() {
             <MessageCircle className="w-5 h-5" />
           </Button>
 
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-          </Button>
+          {/* Notifications */}
+          <NotificationsPanel />
 
+          {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="p-1">
-                <Avatar className="w-8 h-8">
+              <Button variant="ghost" className="p-1 rounded-full">
+                <Avatar className="w-9 h-9 ring-2 ring-transparent hover:ring-primary/50 transition-all">
                   <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="gradient-primary text-primary-foreground text-sm">
+                  <AvatarFallback className="gradient-primary text-primary-foreground text-sm font-semibold">
                     {profile?.full_name?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <div className="px-3 py-2">
+                <p className="font-semibold">{profile?.full_name}</p>
+                <p className="text-sm text-muted-foreground">@{profile?.username}</p>
+              </div>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate(`/profile/${profile?.username}`)}>
                 <User className="w-4 h-4 mr-2" />
                 Meu Perfil
@@ -94,38 +150,13 @@ export function Navbar() {
                 Configurações
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sair
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* Mobile menu toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
         </div>
-      </div>
-
-      {/* Mobile search */}
-      <div className="md:hidden px-4 py-2 bg-card border-b border-border">
-        <form onSubmit={handleSearch}>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar..."
-              className="pl-10 bg-muted/50"
-            />
-          </div>
-        </form>
       </div>
     </nav>
   );
