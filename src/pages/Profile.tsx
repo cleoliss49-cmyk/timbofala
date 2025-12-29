@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Calendar, Settings, MessageCircle, UserPlus, UserMinus } from 'lucide-react';
+import { MapPin, Calendar, Settings, MessageCircle, UserPlus, UserMinus, Facebook, Instagram, Twitter } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { EditProfileDialog } from '@/components/dialogs/EditProfileDialog';
@@ -22,6 +22,11 @@ interface ProfileData {
   bio: string | null;
   avatar_url: string | null;
   cover_url: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  twitter_url: string | null;
+  tiktok_url: string | null;
+  kwai_url: string | null;
   created_at: string;
 }
 
@@ -173,7 +178,15 @@ export default function Profile() {
       <div className="max-w-2xl mx-auto">
         {/* Cover & Avatar */}
         <div className="relative mb-16">
-          <div className="h-48 rounded-2xl gradient-hero" />
+          {profileData.cover_url ? (
+            <img 
+              src={profileData.cover_url} 
+              alt="Capa do perfil"
+              className="h-48 w-full rounded-2xl object-cover"
+            />
+          ) : (
+            <div className="h-48 rounded-2xl gradient-hero" />
+          )}
           
           <div className="absolute -bottom-12 left-6">
             <Avatar className="w-24 h-24 border-4 border-card shadow-lg">
@@ -217,6 +230,71 @@ export default function Profile() {
                   <span className="text-muted-foreground">seguidores</span>
                 </span>
               </div>
+
+              {/* Social Media Links */}
+              {(profileData.facebook_url || profileData.instagram_url || profileData.twitter_url || profileData.tiktok_url || profileData.kwai_url) && (
+                <div className="flex items-center gap-3 mt-4">
+                  {profileData.facebook_url && (
+                    <a 
+                      href={profileData.facebook_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-primary transition-colors"
+                      title="Facebook"
+                    >
+                      <Facebook className="w-5 h-5" />
+                    </a>
+                  )}
+                  {profileData.instagram_url && (
+                    <a 
+                      href={profileData.instagram_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-primary transition-colors"
+                      title="Instagram"
+                    >
+                      <Instagram className="w-5 h-5" />
+                    </a>
+                  )}
+                  {profileData.twitter_url && (
+                    <a 
+                      href={profileData.twitter_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-primary transition-colors"
+                      title="X (Twitter)"
+                    >
+                      <Twitter className="w-5 h-5" />
+                    </a>
+                  )}
+                  {profileData.tiktok_url && (
+                    <a 
+                      href={profileData.tiktok_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-primary transition-colors"
+                      title="TikTok"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                      </svg>
+                    </a>
+                  )}
+                  {profileData.kwai_url && (
+                    <a 
+                      href={profileData.kwai_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-primary transition-colors"
+                      title="Kwai"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/>
+                      </svg>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">

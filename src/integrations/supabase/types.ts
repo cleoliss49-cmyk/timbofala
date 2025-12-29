@@ -413,7 +413,9 @@ export type Database = {
           full_name: string
           id: string
           instagram_url: string | null
+          kwai_url: string | null
           neighborhood: string
+          tiktok_url: string | null
           twitter_url: string | null
           updated_at: string
           username: string
@@ -430,7 +432,9 @@ export type Database = {
           full_name: string
           id: string
           instagram_url?: string | null
+          kwai_url?: string | null
           neighborhood: string
+          tiktok_url?: string | null
           twitter_url?: string | null
           updated_at?: string
           username: string
@@ -447,7 +451,9 @@ export type Database = {
           full_name?: string
           id?: string
           instagram_url?: string | null
+          kwai_url?: string | null
           neighborhood?: string
+          tiktok_url?: string | null
           twitter_url?: string | null
           updated_at?: string
           username?: string
