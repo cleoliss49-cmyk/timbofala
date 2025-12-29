@@ -33,7 +33,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           </>
         )}
         
-        <main className="flex-1 lg:ml-64 lg:mr-80 p-4 md:p-6 pb-24 lg:pb-6">
+        <main className="flex-1 lg:ml-64 p-4 md:p-6 pb-24 lg:pb-6">
           <div className="max-w-[1400px] mx-auto">
             {children}
           </div>
