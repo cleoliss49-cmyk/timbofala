@@ -206,9 +206,21 @@ export function PostCard({ post, onUpdate, onRefresh }: PostCardProps) {
 
   return (
     <>
-      <article className="bg-card rounded-2xl shadow-card border border-border overflow-hidden animate-fade-in">
-        {/* Header */}
-        <div className="p-4 md:p-6">
+      <article className="bg-card rounded-2xl shadow-card border border-border overflow-hidden animate-fade-in group/post">
+        {/* Header with ID tooltip */}
+        <div className="p-4 md:p-6 relative">
+          <div className="absolute top-2 right-2 opacity-0 group-hover/post:opacity-100 transition-opacity">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(post.id);
+                toast({ title: 'ID copiado!' });
+              }}
+              className="text-[10px] px-1.5 py-0.5 bg-muted hover:bg-muted/80 rounded text-muted-foreground"
+              title={post.id}
+            >
+              id
+            </button>
+          </div>
           <div className="flex items-start justify-between">
             <Link
               to={`/profile/${post.profiles.username}`}
