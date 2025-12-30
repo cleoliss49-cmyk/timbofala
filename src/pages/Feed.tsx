@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PostCard } from '@/components/feed/PostCard';
 import { CreatePost } from '@/components/feed/CreatePost';
+import { PinnedPosts } from '@/components/feed/PinnedPosts';
+import { BanNotice } from '@/components/BanNotice';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Sparkles, TrendingUp, RefreshCw } from 'lucide-react';
@@ -97,7 +99,9 @@ export default function Feed() {
   return (
     <MainLayout>
       <div className="max-w-2xl mx-auto">
+        <BanNotice />
         <CreatePost onPostCreated={fetchPosts} />
+        <PinnedPosts location="feed" onRefresh={fetchPosts} />
 
         {posts.length > 0 && (
           <div className="flex justify-center mb-4">
