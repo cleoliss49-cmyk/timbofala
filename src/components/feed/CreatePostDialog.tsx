@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Image, X, Loader2, BarChart3, Gavel, Plus, Trash2 } from 'lucide-react';
+import { Image, X, Loader2, BarChart3, Gavel, Plus, Trash2, Smile, UserPlus } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -43,7 +43,18 @@ export function CreatePostDialog({ open, onOpenChange, onPostCreated }: CreatePo
   const [auctionDescription, setAuctionDescription] = useState('');
   const [auctionMinBid, setAuctionMinBid] = useState('');
   const [auctionIncrement, setAuctionIncrement] = useState('5');
+  const [feeling, setFeeling] = useState('');
 
+  const feelings = [
+    { emoji: '😊', label: 'feliz' },
+    { emoji: '😍', label: 'amando' },
+    { emoji: '🎉', label: 'comemorando' },
+    { emoji: '😢', label: 'triste' },
+    { emoji: '😤', label: 'irritado' },
+    { emoji: '🤔', label: 'pensativo' },
+    { emoji: '😴', label: 'cansado' },
+    { emoji: '🥳', label: 'animado' },
+  ];
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -89,6 +100,7 @@ export function CreatePostDialog({ open, onOpenChange, onPostCreated }: CreatePo
     setAuctionDescription('');
     setAuctionMinBid('');
     setAuctionIncrement('5');
+    setFeeling('');
   };
 
   const handleSubmit = async () => {

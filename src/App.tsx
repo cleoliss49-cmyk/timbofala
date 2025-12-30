@@ -15,6 +15,9 @@ import Community from "./pages/Community";
 import Events from "./pages/Events";
 import Marketplace from "./pages/Marketplace";
 import Settings from "./pages/Settings";
+import Privacy from "./pages/Privacy";
+import Notifications from "./pages/Notifications";
+import Saved from "./pages/Saved";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +42,9 @@ const App = () => (
             <Route path="/events" element={<Events />} />
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/saved" element={<Saved />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

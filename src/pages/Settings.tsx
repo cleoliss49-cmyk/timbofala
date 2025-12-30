@@ -50,7 +50,7 @@ export default function Settings() {
           <div className="border-t border-border" />
 
           <button
-            onClick={() => toast({ title: 'Em breve!', description: 'Configurações de notificação em desenvolvimento.' })}
+            onClick={() => navigate('/notifications')}
             className="w-full flex items-center gap-4 p-4 hover:bg-muted transition-colors text-left"
           >
             <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center">
@@ -65,7 +65,7 @@ export default function Settings() {
           <div className="border-t border-border" />
 
           <button
-            onClick={() => toast({ title: 'Em breve!', description: 'Configurações de privacidade em desenvolvimento.' })}
+            onClick={() => navigate('/privacy')}
             className="w-full flex items-center gap-4 p-4 hover:bg-muted transition-colors text-left"
           >
             <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
