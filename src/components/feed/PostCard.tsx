@@ -12,10 +12,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, MessageCircle, MoreHorizontal, Flag, Trash2, Send, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Flag, Trash2, Send, Bookmark, Share2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ReportDialog } from '@/components/dialogs/ReportDialog';
+import { ShareDialog } from '@/components/dialogs/ShareDialog';
 import { PollDisplay } from './PollDisplay';
 import { AuctionDisplay } from './AuctionDisplay';
 
@@ -49,6 +50,7 @@ export function PostCard({ post, onUpdate, onRefresh }: PostCardProps) {
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   const isLiked = post.reactions.some(r => r.user_id === user?.id);
@@ -292,6 +294,12 @@ export function PostCard({ post, onUpdate, onRefresh }: PostCardProps) {
                 <MessageCircle className="w-5 h-5" />
                 {post.comments.length > 0 && post.comments.length}
               </button>
+              <button
+                onClick={() => setShowShareDialog(true)}
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Share2 className="w-5 h-5" />
+              </button>
             </div>
 
             <button
@@ -357,6 +365,13 @@ export function PostCard({ post, onUpdate, onRefresh }: PostCardProps) {
         onOpenChange={setShowReportDialog}
         reportedUserId={post.profiles.id}
         reportedPostId={post.id}
+      />
+
+      <ShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        postId={post.id}
+        postContent={post.content}
       />
     </>
   );

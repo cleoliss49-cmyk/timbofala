@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Privacy from "./pages/Privacy";
 import Notifications from "./pages/Notifications";
 import Saved from "./pages/Saved";
+import Post from "./pages/Post";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/saved" element={<Saved />} />
+            <Route path="/post/:postId" element={<Post />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
