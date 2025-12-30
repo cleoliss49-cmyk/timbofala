@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, MessageCircle, MoreHorizontal, Flag, Trash2, Send } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Flag, Trash2, Send, Bookmark } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ReportDialog } from '@/components/dialogs/ReportDialog';
@@ -37,10 +37,11 @@ interface Post {
 
 interface PostCardProps {
   post: Post;
-  onUpdate: () => void;
+  onUpdate?: () => void;
+  onRefresh?: () => void;
 }
 
-export function PostCard({ post, onUpdate }: PostCardProps) {
+export function PostCard({ post, onUpdate, onRefresh }: PostCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [showComments, setShowComments] = useState(false);
@@ -48,9 +49,59 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
   const [comments, setComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   const isLiked = post.reactions.some(r => r.user_id === user?.id);
   const isOwner = post.user_id === user?.id;
+
+  const handleUpdate = () => {
+    onUpdate?.();
+    onRefresh?.();
+  };
+
+  // Check if post is saved
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from('saved_posts')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('post_id', post.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setIsSaved(!!data);
+        });
+    }
+  }, [user, post.id]);
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    try {
+      if (isSaved) {
+        await supabase
+          .from('saved_posts')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('post_id', post.id);
+        setIsSaved(false);
+        toast({ title: 'Publicação removida dos salvos' });
+      } else {
+        await supabase.from('saved_posts').insert({
+          user_id: user.id,
+          post_id: post.id,
+        });
+        setIsSaved(true);
+        toast({ title: 'Publicação salva!' });
+      }
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar a publicação.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleLike = async () => {
     if (!user) return;
@@ -69,7 +120,7 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
           reaction_type: 'like',
         });
       }
-      onUpdate();
+      handleUpdate();
     } catch (error) {
       toast({
         title: 'Erro',
@@ -122,7 +173,7 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
 
       setCommentContent('');
       loadComments();
-      onUpdate();
+      handleUpdate();
     } catch (error) {
       toast({
         title: 'Erro',
@@ -141,7 +192,7 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
         title: 'Publicação excluída',
         description: 'Sua publicação foi removida.',
       });
-      onUpdate();
+      handleUpdate();
     } catch (error) {
       toast({
         title: 'Erro',
@@ -222,23 +273,34 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
 
         {/* Actions */}
         <div className="px-4 md:px-6 py-3 border-t border-border">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleLike}
-              className={`flex items-center gap-2 text-sm font-medium transition-colors ${
-                isLiked ? 'text-primary' : 'text-muted-foreground hover:text-primary'
-              }`}
-            >
-              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-              {post.reactions.length > 0 && post.reactions.length}
-            </button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleLike}
+                className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                  isLiked ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+                }`}
+              >
+                <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                {post.reactions.length > 0 && post.reactions.length}
+              </button>
+
+              <button
+                onClick={toggleComments}
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-secondary transition-colors"
+              >
+                <MessageCircle className="w-5 h-5" />
+                {post.comments.length > 0 && post.comments.length}
+              </button>
+            </div>
 
             <button
-              onClick={toggleComments}
-              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-secondary transition-colors"
+              onClick={handleSave}
+              className={`text-sm font-medium transition-colors ${
+                isSaved ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+              }`}
             >
-              <MessageCircle className="w-5 h-5" />
-              {post.comments.length > 0 && post.comments.length}
+              <Bookmark className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
             </button>
           </div>
         </div>

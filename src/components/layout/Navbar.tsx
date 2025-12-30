@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
-import { MessageCircle, Search, User, LogOut, Settings, Menu, Sparkles } from 'lucide-react';
+import { MessageCircle, Search, User, LogOut, Settings, Menu } from 'lucide-react';
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -104,11 +104,6 @@ export function Navbar({ onMenuClick }: NavbarProps) {
             <Search className="w-5 h-5" />
           </Button>
 
-          {/* Premium badge (optional) */}
-          <Button variant="soft" size="sm" className="hidden lg:flex gap-1">
-            <Sparkles className="w-4 h-4" />
-            <span>Premium</span>
-          </Button>
 
           {/* Messages */}
           <Button

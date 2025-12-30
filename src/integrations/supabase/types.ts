@@ -494,6 +494,7 @@ export type Database = {
         Row: {
           content: string | null
           created_at: string
+          feeling: string | null
           id: string
           image_url: string | null
           updated_at: string
@@ -502,6 +503,7 @@ export type Database = {
         Insert: {
           content?: string | null
           created_at?: string
+          feeling?: string | null
           id?: string
           image_url?: string | null
           updated_at?: string
@@ -510,6 +512,7 @@ export type Database = {
         Update: {
           content?: string | null
           created_at?: string
+          feeling?: string | null
           id?: string
           image_url?: string | null
           updated_at?: string
@@ -767,6 +770,101 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      saved_posts: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_posts_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_settings: {
+        Row: {
+          allow_messages_from_all: boolean
+          allow_tagging: boolean
+          created_at: string
+          email_notifications: boolean
+          id: string
+          is_profile_public: boolean
+          notify_auctions: boolean
+          notify_comments: boolean
+          notify_events: boolean
+          notify_follows: boolean
+          notify_likes: boolean
+          notify_mentions: boolean
+          notify_messages: boolean
+          push_notifications: boolean
+          show_activity_status: boolean
+          show_last_seen: boolean
+          show_online_status: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allow_messages_from_all?: boolean
+          allow_tagging?: boolean
+          created_at?: string
+          email_notifications?: boolean
+          id?: string
+          is_profile_public?: boolean
+          notify_auctions?: boolean
+          notify_comments?: boolean
+          notify_events?: boolean
+          notify_follows?: boolean
+          notify_likes?: boolean
+          notify_mentions?: boolean
+          notify_messages?: boolean
+          push_notifications?: boolean
+          show_activity_status?: boolean
+          show_last_seen?: boolean
+          show_online_status?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allow_messages_from_all?: boolean
+          allow_tagging?: boolean
+          created_at?: string
+          email_notifications?: boolean
+          id?: string
+          is_profile_public?: boolean
+          notify_auctions?: boolean
+          notify_comments?: boolean
+          notify_events?: boolean
+          notify_follows?: boolean
+          notify_likes?: boolean
+          notify_mentions?: boolean
+          notify_messages?: boolean
+          push_notifications?: boolean
+          show_activity_status?: boolean
+          show_last_seen?: boolean
+          show_online_status?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
