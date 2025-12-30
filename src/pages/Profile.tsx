@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Calendar, Settings, MessageCircle, UserPlus, UserMinus, Facebook, Instagram, Twitter } from 'lucide-react';
+import { MapPin, Calendar, Settings, MessageCircle, UserPlus, UserMinus, Facebook, Instagram, Twitter, Camera, ImagePlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { EditProfileDialog } from '@/components/dialogs/EditProfileDialog';
+import { FollowersDialog } from '@/components/dialogs/FollowersDialog';
 
 interface ProfileData {
   id: string;
@@ -43,7 +44,8 @@ export default function Profile() {
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-
+  const [showFollowersDialog, setShowFollowersDialog] = useState(false);
+  const [followersTab, setFollowersTab] = useState<'followers' | 'following'>('followers');
   const isOwnProfile = currentUserProfile?.username === username;
 
   const fetchProfile = async () => {
@@ -178,23 +180,41 @@ export default function Profile() {
       <div className="max-w-2xl mx-auto">
         {/* Cover & Avatar */}
         <div className="relative mb-16">
-          {profileData.cover_url ? (
-            <img 
-              src={profileData.cover_url} 
-              alt="Capa do perfil"
-              className="h-48 w-full rounded-2xl object-cover"
-            />
-          ) : (
-            <div className="h-48 rounded-2xl gradient-hero" />
-          )}
+          <div 
+            className={`h-48 rounded-2xl overflow-hidden ${isOwnProfile ? 'cursor-pointer group' : ''}`}
+            onClick={() => isOwnProfile && setShowEditDialog(true)}
+          >
+            {profileData.cover_url ? (
+              <img 
+                src={profileData.cover_url} 
+                alt="Capa do perfil"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full gradient-hero" />
+            )}
+            {isOwnProfile && (
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <ImagePlus className="w-8 h-8 text-white" />
+              </div>
+            )}
+          </div>
           
-          <div className="absolute -bottom-12 left-6">
+          <div 
+            className={`absolute -bottom-12 left-6 ${isOwnProfile ? 'cursor-pointer group' : ''}`}
+            onClick={() => isOwnProfile && setShowEditDialog(true)}
+          >
             <Avatar className="w-24 h-24 border-4 border-card shadow-lg">
               <AvatarImage src={profileData.avatar_url || undefined} />
               <AvatarFallback className="gradient-primary text-primary-foreground text-2xl">
                 {profileData.full_name.charAt(0)}
               </AvatarFallback>
             </Avatar>
+            {isOwnProfile && (
+              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
+            )}
           </div>
         </div>
 
@@ -221,14 +241,20 @@ export default function Profile() {
               </div>
 
               <div className="flex gap-4 mt-4">
-                <span className="text-sm">
+                <button 
+                  className="text-sm hover:underline"
+                  onClick={() => { setFollowersTab('following'); setShowFollowersDialog(true); }}
+                >
                   <strong className="text-foreground">{followingCount}</strong>{' '}
                   <span className="text-muted-foreground">seguindo</span>
-                </span>
-                <span className="text-sm">
+                </button>
+                <button 
+                  className="text-sm hover:underline"
+                  onClick={() => { setFollowersTab('followers'); setShowFollowersDialog(true); }}
+                >
                   <strong className="text-foreground">{followersCount}</strong>{' '}
                   <span className="text-muted-foreground">seguidores</span>
-                </span>
+                </button>
               </div>
 
               {/* Social Media Links */}
