@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          can_delete_posts: boolean
+          can_delete_users: boolean
+          can_manage_admins: boolean
+          can_pin_posts: boolean
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          role: Database["public"]["Enums"]["admin_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_delete_posts?: boolean
+          can_delete_users?: boolean
+          can_manage_admins?: boolean
+          can_pin_posts?: boolean
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          role?: Database["public"]["Enums"]["admin_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_delete_posts?: boolean
+          can_delete_users?: boolean
+          can_manage_admins?: boolean
+          can_pin_posts?: boolean
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          role?: Database["public"]["Enums"]["admin_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       auction_bids: {
         Row: {
           amount: number
@@ -390,6 +432,79 @@ export type Database = {
           },
         ]
       }
+      pinned_post_impressions: {
+        Row: {
+          id: string
+          last_seen_at: string
+          pinned_post_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_seen_at?: string
+          pinned_post_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_seen_at?: string
+          pinned_post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pinned_post_impressions_pinned_post_id_fkey"
+            columns: ["pinned_post_id"]
+            isOneToOne: false
+            referencedRelation: "pinned_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pinned_posts: {
+        Row: {
+          created_at: string
+          duration_hours: number
+          ends_at: string
+          id: string
+          impressions: number
+          pin_location: string
+          pinned_by: string
+          post_id: string
+          starts_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_hours?: number
+          ends_at: string
+          id?: string
+          impressions?: number
+          pin_location?: string
+          pinned_by: string
+          post_id: string
+          starts_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_hours?: number
+          ends_at?: string
+          id?: string
+          impressions?: number
+          pin_location?: string
+          pinned_by?: string
+          post_id?: string
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pinned_posts_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_options: {
         Row: {
           created_at: string
@@ -718,6 +833,7 @@ export type Database = {
       }
       reports: {
         Row: {
+          action_taken: string | null
           created_at: string
           description: string | null
           id: string
@@ -725,9 +841,12 @@ export type Database = {
           reported_post_id: string | null
           reported_user_id: string | null
           reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
           status: string
         }
         Insert: {
+          action_taken?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -735,9 +854,12 @@ export type Database = {
           reported_post_id?: string | null
           reported_user_id?: string | null
           reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
           status?: string
         }
         Update: {
+          action_taken?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -745,6 +867,8 @@ export type Database = {
           reported_post_id?: string | null
           reported_user_id?: string | null
           reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
           status?: string
         }
         Relationships: [
@@ -871,10 +995,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      admin_role: "super_admin" | "moderator" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1001,6 +1126,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      admin_role: ["super_admin", "moderator", "viewer"],
+    },
   },
 } as const

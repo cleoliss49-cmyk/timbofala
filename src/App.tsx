@@ -19,6 +19,8 @@ import Privacy from "./pages/Privacy";
 import Notifications from "./pages/Notifications";
 import Saved from "./pages/Saved";
 import Post from "./pages/Post";
+import AdminAuth from "./pages/AdminAuth";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +49,8 @@ const App = () => (
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/saved" element={<Saved />} />
             <Route path="/post/:postId" element={<Post />} />
+            <Route path="/admtbo" element={<AdminAuth />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
