@@ -16,6 +16,8 @@ import { Heart, MessageCircle, MoreHorizontal, Flag, Trash2, Send } from 'lucide
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ReportDialog } from '@/components/dialogs/ReportDialog';
+import { PollDisplay } from './PollDisplay';
+import { AuctionDisplay } from './AuctionDisplay';
 
 interface Post {
   id: string;
@@ -199,6 +201,12 @@ export function PostCard({ post, onUpdate }: PostCardProps) {
           {post.content && (
             <p className="mt-4 text-foreground whitespace-pre-wrap">{post.content}</p>
           )}
+
+          {/* Poll Display */}
+          <PollDisplay postId={post.id} />
+
+          {/* Auction Display */}
+          <AuctionDisplay postId={post.id} isOwner={isOwner} />
         </div>
 
         {/* Image */}
