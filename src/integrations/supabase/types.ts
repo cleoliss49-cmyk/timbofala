@@ -141,6 +141,39 @@ export type Database = {
           },
         ]
       }
+      call_sessions: {
+        Row: {
+          call_type: string
+          caller_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          receiver_id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          call_type?: string
+          caller_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          receiver_id: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          call_type?: string
+          caller_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          receiver_id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
