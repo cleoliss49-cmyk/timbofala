@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { CallInterface } from '@/components/calls/CallInterface';
-import { Send, ArrowLeft, Phone, Video } from 'lucide-react';
+import { AudioRecorder } from '@/components/chat/AudioRecorder';
+import { useMessageSound } from '@/hooks/useMessageSound';
+import { Send, ArrowLeft, Phone, Video, Volume2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -43,9 +45,11 @@ interface ActiveCall {
 
 export default function Messages() {
   const { recipientId } = useParams<{ recipientId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { playSound } = useMessageSound();
   
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -53,7 +57,16 @@ export default function Messages() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
+  const [sendingAudio, setSendingAudio] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Handle pre-filled message from marketplace
+  useEffect(() => {
+    const prefillMessage = searchParams.get('message');
+    if (prefillMessage) {
+      setNewMessage(decodeURIComponent(prefillMessage));
+    }
+  }, [searchParams]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -179,6 +192,10 @@ export default function Messages() {
         },
         (payload) => {
           const newMsg = payload.new as Message;
+          
+          // Play notification sound
+          playSound();
+          
           if (recipientId && newMsg.sender_id === recipientId) {
             setMessages((prev) => [...prev, newMsg]);
             supabase
@@ -194,7 +211,7 @@ export default function Messages() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, recipientId]);
+  }, [user, recipientId, playSound]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,6 +242,46 @@ export default function Messages() {
     }
   };
 
+  const handleAudioRecording = async (audioBlob: Blob) => {
+    if (!user || !recipientId) return;
+
+    setSendingAudio(true);
+    try {
+      const fileName = `${user.id}/${Date.now()}.webm`;
+      const { error: uploadError } = await supabase.storage
+        .from('audio_messages')
+        .upload(fileName, audioBlob);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('audio_messages')
+        .getPublicUrl(fileName);
+
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          receiver_id: recipientId,
+          content: `🎤 Mensagem de áudio: ${publicUrl}`,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setMessages((prev) => [...prev, data]);
+      fetchConversations();
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível enviar o áudio.',
+        variant: 'destructive',
+      });
+    }
+    setSendingAudio(false);
+  };
+
   const startCall = (type: 'voice' | 'video') => {
     if (!recipient) return;
     setActiveCall({
@@ -233,6 +290,21 @@ export default function Messages() {
       recipientAvatar: recipient.avatar_url,
       callType: type,
     });
+  };
+
+  const renderMessageContent = (content: string) => {
+    if (content.startsWith('🎤 Mensagem de áudio:')) {
+      const audioUrl = content.replace('🎤 Mensagem de áudio: ', '');
+      return (
+        <div className="flex items-center gap-2">
+          <Volume2 className="w-4 h-4" />
+          <audio controls className="h-8 max-w-[200px]">
+            <source src={audioUrl} type="audio/webm" />
+          </audio>
+        </div>
+      );
+    }
+    return <p>{content}</p>;
   };
 
   return (
@@ -279,7 +351,7 @@ export default function Messages() {
                         </div>
                         {convo.lastMessage && (
                           <p className="text-sm text-muted-foreground truncate">
-                            {convo.lastMessage.content}
+                            {convo.lastMessage.content.startsWith('🎤') ? '🎤 Áudio' : convo.lastMessage.content}
                           </p>
                         )}
                       </div>
@@ -293,7 +365,6 @@ export default function Messages() {
             <div className={`flex-1 flex flex-col ${!recipientId ? 'hidden md:flex' : ''}`}>
               {recipientId && recipient ? (
                 <>
-                  {/* Chat header */}
                   <div className="p-4 border-b border-border flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Button
@@ -317,42 +388,22 @@ export default function Messages() {
                     </div>
                     
                     <div className="flex gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => startCall('voice')}
-                        className="hover:bg-green-500/10 hover:text-green-500"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => startCall('voice')} className="hover:bg-green-500/10 hover:text-green-500">
                         <Phone className="w-5 h-5" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => startCall('video')}
-                        className="hover:bg-blue-500/10 hover:text-blue-500"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => startCall('video')} className="hover:bg-blue-500/10 hover:text-blue-500">
                         <Video className="w-5 h-5" />
                       </Button>
                     </div>
                   </div>
 
-                  {/* Messages */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.map((msg) => {
                       const isMine = msg.sender_id === user?.id;
                       return (
-                        <div
-                          key={msg.id}
-                          className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div
-                            className={`max-w-[70%] px-4 py-2 rounded-2xl ${
-                              isMine
-                                ? 'gradient-primary text-primary-foreground rounded-br-sm'
-                                : 'bg-muted text-foreground rounded-bl-sm'
-                            }`}
-                          >
-                            <p>{msg.content}</p>
+                        <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[70%] px-4 py-2 rounded-2xl ${isMine ? 'gradient-primary text-primary-foreground rounded-br-sm' : 'bg-muted text-foreground rounded-bl-sm'}`}>
+                            {renderMessageContent(msg.content)}
                             <p className={`text-xs mt-1 ${isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                               {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ptBR })}
                             </p>
@@ -363,7 +414,6 @@ export default function Messages() {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* Message input */}
                   <form onSubmit={sendMessage} className="p-4 border-t border-border flex gap-2">
                     <Input
                       value={newMessage}
@@ -371,6 +421,7 @@ export default function Messages() {
                       placeholder="Digite sua mensagem..."
                       className="flex-1"
                     />
+                    <AudioRecorder onRecordingComplete={handleAudioRecording} disabled={sendingAudio} />
                     <Button type="submit" disabled={!newMessage.trim()}>
                       <Send className="w-4 h-4" />
                     </Button>
@@ -386,7 +437,6 @@ export default function Messages() {
         </div>
       </MainLayout>
 
-      {/* Call Interface */}
       {activeCall && (
         <CallInterface
           recipientId={activeCall.recipientId}

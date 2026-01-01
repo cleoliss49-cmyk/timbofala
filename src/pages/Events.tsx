@@ -3,11 +3,11 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Plus, MapPin, Users, Clock, X, Image as ImageIcon } from 'lucide-react';
+import { Calendar, Plus, MapPin, Users, Clock, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, isPast, addHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Link } from 'react-router-dom';
@@ -48,6 +48,7 @@ interface Event {
   };
   attendees_count: number;
   is_attending: boolean;
+  is_ended: boolean;
 }
 
 const CATEGORIES = [
@@ -89,6 +90,22 @@ export default function Events() {
 
   const fetchEvents = async () => {
     try {
+      // Delete events that ended more than 24 hours ago
+      const twentyFourHoursAgo = addHours(new Date(), -24).toISOString();
+      await supabase
+        .from('events')
+        .delete()
+        .lt('end_date', twentyFourHoursAgo)
+        .not('end_date', 'is', null);
+
+      // Also delete events where event_date is more than 24 hours ago (if no end_date)
+      await supabase
+        .from('events')
+        .delete()
+        .lt('event_date', twentyFourHoursAgo)
+        .is('end_date', null);
+
+      // Fetch all events, not just future ones
       const { data: eventsData, error } = await supabase
         .from('events')
         .select(`
@@ -100,7 +117,6 @@ export default function Events() {
             avatar_url
           )
         `)
-        .gte('event_date', new Date().toISOString())
         .order('event_date', { ascending: true });
 
       if (error) throw error;
@@ -124,13 +140,25 @@ export default function Events() {
             isAttending = !!attendance;
           }
 
+          // Check if event is ended
+          const endDate = event.end_date || event.event_date;
+          const isEnded = isPast(new Date(endDate));
+
           return {
             ...event,
             attendees_count: count || 0,
             is_attending: isAttending,
+            is_ended: isEnded,
           };
         })
       );
+
+      // Sort: active events first (by date), then ended events
+      eventsWithDetails.sort((a, b) => {
+        if (a.is_ended && !b.is_ended) return 1;
+        if (!a.is_ended && b.is_ended) return -1;
+        return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+      });
 
       setEvents(eventsWithDetails);
     } catch (error) {
@@ -152,7 +180,15 @@ export default function Events() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      toast({ title: 'Faça login para criar eventos', variant: 'destructive' });
+      return;
+    }
+
+    if (!formData.title || !formData.location || !formData.event_date) {
+      toast({ title: 'Preencha os campos obrigatórios', variant: 'destructive' });
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -175,21 +211,30 @@ export default function Events() {
         imageUrl = publicUrl;
       }
 
-      const { error } = await supabase.from('events').insert({
+      const eventData = {
         user_id: user.id,
         title: formData.title,
         description: formData.description || null,
         location: formData.location,
-        event_date: formData.event_date,
-        end_date: formData.end_date || null,
+        event_date: new Date(formData.event_date).toISOString(),
+        end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
         image_url: imageUrl,
         category: formData.category,
         is_free: formData.is_free,
         price: formData.is_free ? null : parseFloat(formData.price) || null,
         max_attendees: formData.max_attendees ? parseInt(formData.max_attendees) : null,
-      });
+      };
 
-      if (error) throw error;
+      console.log('Creating event with data:', eventData);
+
+      const { data, error } = await supabase.from('events').insert(eventData).select();
+
+      if (error) {
+        console.error('Error creating event:', error);
+        throw error;
+      }
+
+      console.log('Event created successfully:', data);
 
       toast({ title: 'Evento criado com sucesso!' });
       setIsDialogOpen(false);
@@ -208,6 +253,7 @@ export default function Events() {
       setImagePreview(null);
       fetchEvents();
     } catch (error: any) {
+      console.error('Full error:', error);
       toast({ title: 'Erro ao criar evento', description: error.message, variant: 'destructive' });
     } finally {
       setSubmitting(false);
@@ -410,9 +456,28 @@ export default function Events() {
         ) : (
           <div className="space-y-4">
             {events.map((event) => (
-              <div key={event.id} className="bg-card rounded-2xl shadow-card border border-border overflow-hidden">
+              <div 
+                key={event.id} 
+                className={`bg-card rounded-2xl shadow-card border border-border overflow-hidden ${event.is_ended ? 'opacity-60' : ''}`}
+              >
                 {event.image_url && (
-                  <img src={event.image_url} alt={event.title} className="w-full h-48 object-cover" />
+                  <div className="relative">
+                    <img src={event.image_url} alt={event.title} className="w-full h-48 object-cover" />
+                    {event.is_ended && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="bg-destructive text-destructive-foreground px-4 py-2 rounded-full font-bold flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5" />
+                          EVENTO ENCERRADO
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!event.image_url && event.is_ended && (
+                  <div className="bg-destructive/10 p-3 flex items-center justify-center gap-2 text-destructive">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="font-semibold">EVENTO ENCERRADO</span>
+                  </div>
                 )}
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
@@ -438,6 +503,9 @@ export default function Events() {
                       <Clock className="w-4 h-4" />
                       <span>
                         {format(new Date(event.event_date), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                        {event.end_date && (
+                          <> até {format(new Date(event.end_date), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}</>
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -463,13 +531,14 @@ export default function Events() {
                       </Avatar>
                       <span className="text-sm font-medium">{event.profiles.full_name}</span>
                     </Link>
-                    <Button
-                      variant={event.is_attending ? 'outline' : 'default'}
-                      onClick={() => handleAttend(event.id, event.is_attending)}
-                      className={!event.is_attending ? 'gradient-primary text-white' : ''}
-                    >
-                      {event.is_attending ? 'Cancelar' : 'Participar'}
-                    </Button>
+                    {!event.is_ended && (
+                      <Button
+                        variant={event.is_attending ? 'outline' : 'default'}
+                        onClick={() => handleAttend(event.id, event.is_attending)}
+                      >
+                        {event.is_attending ? 'Cancelar' : 'Participar'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

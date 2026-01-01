@@ -676,6 +676,45 @@ export type Database = {
           },
         ]
       }
+      product_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_comments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_favorites: {
         Row: {
           created_at: string
@@ -705,6 +744,42 @@ export type Database = {
           },
           {
             foreignKeyName: "product_favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_likes: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_likes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_likes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -776,6 +851,7 @@ export type Database = {
           created_at: string
           facebook_url: string | null
           full_name: string
+          gender: string | null
           id: string
           instagram_url: string | null
           kwai_url: string | null
@@ -795,6 +871,7 @@ export type Database = {
           created_at?: string
           facebook_url?: string | null
           full_name: string
+          gender?: string | null
           id: string
           instagram_url?: string | null
           kwai_url?: string | null
@@ -814,6 +891,7 @@ export type Database = {
           created_at?: string
           facebook_url?: string | null
           full_name?: string
+          gender?: string | null
           id?: string
           instagram_url?: string | null
           kwai_url?: string | null
