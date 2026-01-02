@@ -28,6 +28,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { BusinessReviews } from '@/components/business/BusinessReviews';
+import { CheckoutDialog } from '@/components/business/CheckoutDialog';
 import { getCategoryInfo } from '@/lib/productCategories';
 
 interface BusinessProfile {
@@ -52,6 +53,9 @@ interface BusinessProfile {
   delivery_fee: number | null;
   min_order_value: number | null;
   is_verified: boolean;
+  pix_key: string | null;
+  pix_key_type: string | null;
+  pix_holder_name: string | null;
 }
 
 interface Product {
@@ -86,13 +90,6 @@ export default function Business() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutData, setCheckoutData] = useState({
-    phone: '',
-    address: '',
-    notes: '',
-    wants_delivery: false
-  });
-  const [submitting, setSubmitting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
 
   const isOwner = user?.id === business?.user_id;
@@ -196,98 +193,6 @@ export default function Business() {
 
   const calculateTotal = () => {
     return calculateSubtotal() + calculateDeliveryFee();
-  };
-
-  const handleCheckout = async () => {
-    if (!user) {
-      toast({
-        title: 'Faça login',
-        description: 'Você precisa estar logado para finalizar a compra',
-        variant: 'destructive'
-      });
-      navigate('/auth');
-      return;
-    }
-
-    if (!checkoutData.phone) {
-      toast({
-        title: 'Telefone obrigatório',
-        description: 'Por favor, informe seu telefone de contato',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    const hasDelivery = cart.some(item => item.wants_delivery);
-    if (hasDelivery && !checkoutData.address) {
-      toast({
-        title: 'Endereço obrigatório',
-        description: 'Por favor, informe o endereço de entrega',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      // Generate order number
-      const orderNumber = 'TF' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-      
-      // Create order
-      const { data: order, error: orderError } = await supabase
-        .from('business_orders')
-        .insert({
-          order_number: orderNumber,
-          business_id: business!.id,
-          customer_id: user.id,
-          subtotal: calculateSubtotal(),
-          delivery_fee: calculateDeliveryFee(),
-          total: calculateTotal(),
-          wants_delivery: hasDelivery,
-          delivery_address: hasDelivery ? checkoutData.address : null,
-          customer_phone: checkoutData.phone,
-          customer_notes: checkoutData.notes || null
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Create order items
-      const orderItems = cart.map(item => ({
-        order_id: order.id,
-        product_id: item.product.id,
-        product_name: item.product.name,
-        product_price: getProductPrice(item.product),
-        quantity: item.quantity,
-        subtotal: getProductPrice(item.product) * item.quantity
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('business_order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      toast({
-        title: 'Pedido realizado!',
-        description: `Número do pedido: ${order.order_number}`
-      });
-
-      setCart([]);
-      setShowCheckout(false);
-      setShowCart(false);
-      setCheckoutData({ phone: '', address: '', notes: '', wants_delivery: false });
-    } catch (error) {
-      console.error('Error creating order:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível finalizar o pedido',
-        variant: 'destructive'
-      });
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const categories = ['todos', ...new Set(products.map(p => p.category))];
@@ -697,81 +602,16 @@ export default function Business() {
         </Dialog>
 
         {/* Checkout Dialog */}
-        <Dialog open={showCheckout} onOpenChange={setShowCheckout}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Finalizar Pedido</DialogTitle>
-              <DialogDescription>
-                Preencha seus dados para enviar o pedido para {business.business_name}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="phone">Telefone para contato *</Label>
-                <Input
-                  id="phone"
-                  placeholder="(00) 00000-0000"
-                  value={checkoutData.phone}
-                  onChange={(e) => setCheckoutData(prev => ({ ...prev, phone: e.target.value }))}
-                />
-              </div>
-
-              {cart.some(item => item.wants_delivery) && (
-                <div>
-                  <Label htmlFor="address">Endereço de entrega *</Label>
-                  <Textarea
-                    id="address"
-                    placeholder="Rua, número, bairro, complemento..."
-                    value={checkoutData.address}
-                    onChange={(e) => setCheckoutData(prev => ({ ...prev, address: e.target.value }))}
-                  />
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="notes">Observações (opcional)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Alguma observação sobre o pedido..."
-                  value={checkoutData.notes}
-                  onChange={(e) => setCheckoutData(prev => ({ ...prev, notes: e.target.value }))}
-                />
-              </div>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>{cart.reduce((sum, item) => sum + item.quantity, 0)} itens</span>
-                      <span>R$ {calculateSubtotal().toFixed(2)}</span>
-                    </div>
-                    {calculateDeliveryFee() > 0 && (
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Entrega</span>
-                        <span>R$ {calculateDeliveryFee().toFixed(2)}</span>
-                      </div>
-                    )}
-                    <Separator className="my-2" />
-                    <div className="flex justify-between font-bold">
-                      <span>Total</span>
-                      <span className="text-primary">R$ {calculateTotal().toFixed(2)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCheckout(false)}>
-                Voltar
-              </Button>
-              <Button onClick={handleCheckout} disabled={submitting}>
-                {submitting ? 'Enviando...' : 'Confirmar Pedido'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <CheckoutDialog
+          open={showCheckout}
+          onOpenChange={setShowCheckout}
+          business={business}
+          cart={cart}
+          onSuccess={() => {
+            setCart([]);
+            setShowCart(false);
+          }}
+        />
       </div>
     </MainLayout>
   );

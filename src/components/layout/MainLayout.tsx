@@ -6,7 +6,6 @@ import { ChatSidebar } from './ChatSidebar';
 import { MobileNav } from './MobileNav';
 import { IncomingCallListener } from '@/components/calls/IncomingCallListener';
 import { CallInterface } from '@/components/calls/CallInterface';
-import { OrderNotificationListener } from '@/components/business/OrderNotificationListener';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -77,9 +76,6 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {/* Incoming call listener */}
       <IncomingCallListener onAccept={handleAcceptCall} />
-
-      {/* Order notification listener */}
-      <OrderNotificationListener />
 
       {/* Active call interface */}
       {activeCall && (
