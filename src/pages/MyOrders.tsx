@@ -8,6 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -15,10 +19,22 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ShoppingBag, Package, Truck, Clock, CheckCircle, 
-  XCircle, Store, ChefHat, ArrowLeft, RefreshCw
+  XCircle, Store, ChefHat, ArrowLeft, RefreshCw, 
+  Upload, Eye, MessageCircle, Wallet, CreditCard,
+  Banknote, Image, FileText, Loader2, ExternalLink
 } from 'lucide-react';
 
 interface OrderItem {
@@ -33,6 +49,9 @@ interface Order {
   id: string;
   order_number: string;
   status: string;
+  payment_method: string | null;
+  payment_status: string | null;
+  receipt_url: string | null;
   subtotal: number;
   delivery_fee: number | null;
   total: number;
@@ -42,31 +61,50 @@ interface Order {
   customer_notes: string | null;
   created_at: string;
   updated_at: string;
+  estimated_time_minutes: number | null;
   business: {
     id: string;
     business_name: string;
     slug: string;
     logo_url: string | null;
+    whatsapp: string | null;
+    pix_key: string | null;
+    pix_key_type: string | null;
+    pix_holder_name: string | null;
   };
   items: OrderItem[];
 }
 
 const ORDER_STATUS = [
-  { value: 'pending', label: 'Pendente', color: 'bg-yellow-500', icon: Clock, description: 'Aguardando confirmação' },
-  { value: 'confirmed', label: 'Confirmado', color: 'bg-blue-500', icon: CheckCircle, description: 'Pedido aceito pela loja' },
-  { value: 'preparing', label: 'Preparando', color: 'bg-orange-500', icon: ChefHat, description: 'Seu pedido está sendo preparado' },
-  { value: 'ready', label: 'Pronto', color: 'bg-green-500', icon: Package, description: 'Pronto para retirada/entrega' },
-  { value: 'delivered', label: 'Entregue', color: 'bg-emerald-500', icon: CheckCircle, description: 'Pedido finalizado' },
-  { value: 'cancelled', label: 'Cancelado', color: 'bg-red-500', icon: XCircle, description: 'Pedido cancelado' }
+  { value: 'pending', label: 'Pedido Realizado', icon: Clock, emoji: '🕒', description: 'Aguardando confirmação da loja' },
+  { value: 'awaiting_payment', label: 'Aguardando Pagamento', icon: Wallet, emoji: '💰', description: 'Efetue o pagamento PIX' },
+  { value: 'pending_confirmation', label: 'Comprovante Enviado', icon: FileText, emoji: '📎', description: 'Aguardando confirmação do pagamento' },
+  { value: 'confirmed', label: 'Pagamento Confirmado', icon: CheckCircle, emoji: '✅', description: 'Pagamento recebido' },
+  { value: 'preparing', label: 'Preparando', icon: ChefHat, emoji: '🍳', description: 'Seu pedido está sendo preparado' },
+  { value: 'ready', label: 'Pronto', icon: Package, emoji: '📦', description: 'Pronto para retirada/entrega' },
+  { value: 'delivered', label: 'Entregue', icon: CheckCircle, emoji: '🚚', description: 'Pedido finalizado' },
+  { value: 'cancelled', label: 'Cancelado', icon: XCircle, emoji: '❌', description: 'Pedido cancelado' }
 ];
+
+const PAYMENT_METHODS = {
+  pix: { label: 'PIX', icon: Wallet, color: 'text-green-600' },
+  cash: { label: 'Dinheiro', icon: Banknote, color: 'text-yellow-600' },
+  debit: { label: 'Débito', icon: CreditCard, color: 'text-blue-600' },
+  credit: { label: 'Crédito', icon: CreditCard, color: 'text-purple-600' }
+};
 
 export default function MyOrders() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptToView, setReceiptToView] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -87,12 +125,11 @@ export default function MyOrders() {
 
       if (error) throw error;
 
-      // Fetch business info and items for each order
       const ordersWithDetails = await Promise.all(
         (ordersData || []).map(async (order) => {
           const { data: business } = await supabase
             .from('business_profiles')
-            .select('id, business_name, slug, logo_url')
+            .select('id, business_name, slug, logo_url, whatsapp, pix_key, pix_key_type, pix_holder_name')
             .eq('id', order.business_id)
             .single();
 
@@ -103,9 +140,11 @@ export default function MyOrders() {
 
           return {
             ...order,
-            business: business || { id: '', business_name: 'Loja', slug: '', logo_url: null },
+            receipt_url: (order as any).receipt_url || null,
+            estimated_time_minutes: (order as any).estimated_time_minutes || null,
+            business: business || { id: '', business_name: 'Loja', slug: '', logo_url: null, whatsapp: null, pix_key: null, pix_key_type: null, pix_holder_name: null },
             items: items || []
-          };
+          } as Order;
         })
       );
 
@@ -124,18 +163,13 @@ export default function MyOrders() {
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'business_orders',
           filter: `customer_id=eq.${user!.id}`
         },
-        (payload) => {
-          console.log('Order update:', payload);
-          setOrders(prev => prev.map(order => 
-            order.id === payload.new.id 
-              ? { ...order, ...payload.new as any }
-              : order
-          ));
+        () => {
+          fetchOrders();
         }
       )
       .subscribe();
@@ -152,6 +186,100 @@ export default function MyOrders() {
 
   const getStatusInfo = (status: string) => {
     return ORDER_STATUS.find(s => s.value === status) || ORDER_STATUS[0];
+  };
+
+  const getPaymentInfo = (method: string | null) => {
+    if (!method) return null;
+    return PAYMENT_METHODS[method as keyof typeof PAYMENT_METHODS];
+  };
+
+  const handleUploadReceipt = async (file: File) => {
+    if (!selectedOrder) return;
+
+    setUploadingReceipt(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user!.id}/${selectedOrder.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('receipts')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('receipts')
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from('business_orders')
+        .update({
+          receipt_url: publicUrl,
+          receipt_uploaded_at: new Date().toISOString(),
+          payment_status: 'pending_confirmation'
+        })
+        .eq('id', selectedOrder.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: '✅ Comprovante enviado!',
+        description: 'Aguarde a confirmação do pagamento'
+      });
+
+      fetchOrders();
+    } catch (error) {
+      console.error('Error uploading receipt:', error);
+      toast({
+        title: 'Erro ao enviar',
+        description: 'Não foi possível enviar o comprovante',
+        variant: 'destructive'
+      });
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!selectedOrder) return;
+
+    try {
+      const { error } = await supabase
+        .from('business_orders')
+        .update({
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: user!.id
+        })
+        .eq('id', selectedOrder.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Pedido cancelado',
+        description: 'Seu pedido foi cancelado'
+      });
+
+      setShowCancelDialog(false);
+      setSelectedOrder(null);
+      fetchOrders();
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível cancelar o pedido',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const openWhatsApp = (order: Order) => {
+    if (order.business.whatsapp) {
+      const message = encodeURIComponent(
+        `Olá! Tenho uma dúvida sobre meu pedido ${order.order_number}.`
+      );
+      window.open(`https://wa.me/55${order.business.whatsapp.replace(/\D/g, '')}?text=${message}`, '_blank');
+    }
   };
 
   const activeOrders = orders.filter(o => 
@@ -253,15 +381,10 @@ export default function MyOrders() {
 
         {/* Order Details Dialog */}
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <span className="font-mono">{selectedOrder?.order_number}</span>
-                {selectedOrder && (
-                  <Badge className={`${getStatusInfo(selectedOrder.status).color} text-white`}>
-                    {getStatusInfo(selectedOrder.status).label}
-                  </Badge>
-                )}
               </DialogTitle>
               <DialogDescription>
                 {selectedOrder && new Date(selectedOrder.created_at).toLocaleString('pt-BR')}
@@ -269,105 +392,266 @@ export default function MyOrders() {
             </DialogHeader>
 
             {selectedOrder && (
-              <ScrollArea className="max-h-[60vh]">
-                <div className="space-y-4 pr-4">
-                  {/* Status Timeline */}
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <p className="text-sm font-medium mb-3">Status do Pedido</p>
-                    <div className="space-y-3">
-                      {ORDER_STATUS.filter(s => s.value !== 'cancelled').map((status, index) => {
-                        const StatusIcon = status.icon;
-                        const isActive = ORDER_STATUS.findIndex(s => s.value === selectedOrder.status) >= index;
-                        const isCurrent = selectedOrder.status === status.value;
-                        
-                        return (
-                          <div key={status.value} className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive ? status.color : 'bg-muted'}`}>
-                              <StatusIcon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
-                            </div>
-                            <div className={isCurrent ? 'font-medium' : 'text-muted-foreground'}>
-                              <p className="text-sm">{status.label}</p>
-                              {isCurrent && (
-                                <p className="text-xs text-muted-foreground">{status.description}</p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+              <ScrollArea className="flex-1 -mx-6 px-6">
+                <div className="space-y-4 pb-4">
+                  {/* Visual Timeline */}
+                  <Card className="bg-muted/30">
+                    <CardContent className="p-4">
+                      <p className="text-sm font-medium mb-4">Acompanhe seu pedido</p>
+                      <div className="relative">
+                        {ORDER_STATUS.filter(s => !['cancelled', 'awaiting_payment', 'pending_confirmation'].includes(s.value) || 
+                          [selectedOrder.status, selectedOrder.payment_status].includes(s.value))
+                          .slice(0, -1)
+                          .map((status, index, arr) => {
+                          const isActive = getStatusIndex(selectedOrder.status, selectedOrder.payment_status) >= index;
+                          const isCurrent = isCurrentStatus(selectedOrder.status, selectedOrder.payment_status, status.value);
 
-                  {/* Business */}
-                  <Link to={`/empresa/${selectedOrder.business.slug}`}>
-                    <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                      {selectedOrder.business.logo_url ? (
-                        <img 
-                          src={selectedOrder.business.logo_url} 
-                          alt={selectedOrder.business.business_name}
-                          className="w-10 h-10 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Store className="w-5 h-5 text-primary" />
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-medium">{selectedOrder.business.business_name}</p>
-                        <p className="text-xs text-muted-foreground">Ver loja</p>
+                          return (
+                            <div key={status.value} className="flex items-start gap-3 pb-4 last:pb-0">
+                              <div className="flex flex-col items-center">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
+                                  isActive 
+                                    ? 'bg-primary text-primary-foreground' 
+                                    : 'bg-muted text-muted-foreground'
+                                } ${isCurrent ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
+                                  {status.emoji}
+                                </div>
+                                {index < arr.length - 1 && (
+                                  <div className={`w-0.5 h-8 ${isActive ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                                )}
+                              </div>
+                              <div className={`pt-2 ${isCurrent ? 'font-medium' : 'text-muted-foreground'}`}>
+                                <p className="text-sm">{status.label}</p>
+                                {isCurrent && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">{status.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Payment Actions */}
+                  {(selectedOrder.payment_status === 'awaiting_payment' || selectedOrder.status === 'awaiting_payment') && 
+                    selectedOrder.payment_method === 'pix' && (
+                    <Card className="border-green-200 bg-green-50">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center gap-2 text-green-700 font-medium">
+                          <Wallet className="w-5 h-5" />
+                          Pagamento Pendente
+                        </div>
+                        <p className="text-sm text-green-800">
+                          Efetue o pagamento PIX e envie o comprovante
+                        </p>
+                        <label className="block">
+                          <Button className="w-full gap-2" disabled={uploadingReceipt}>
+                            {uploadingReceipt ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4" />
+                            )}
+                            Enviar Comprovante
+                          </Button>
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleUploadReceipt(file);
+                            }}
+                          />
+                        </label>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Receipt Sent Status */}
+                  {selectedOrder.payment_status === 'pending_confirmation' && selectedOrder.receipt_url && (
+                    <Card className="border-yellow-200 bg-yellow-50">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-yellow-700">
+                            <FileText className="w-5 h-5" />
+                            <span className="font-medium">Comprovante em Análise</span>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setReceiptToView(selectedOrder.receipt_url)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Ver
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Business Info */}
+                  <Link to={`/empresa/${selectedOrder.business.slug}`}>
+                    <Card className="hover:bg-muted/50 transition-colors">
+                      <CardContent className="p-3 flex items-center gap-3">
+                        {selectedOrder.business.logo_url ? (
+                          <img 
+                            src={selectedOrder.business.logo_url} 
+                            alt={selectedOrder.business.business_name}
+                            className="w-12 h-12 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Store className="w-6 h-6 text-primary" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <p className="font-medium">{selectedOrder.business.business_name}</p>
+                          <p className="text-xs text-muted-foreground">Ver loja</p>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                      </CardContent>
+                    </Card>
                   </Link>
 
-                  {/* Items */}
-                  <div>
-                    <p className="text-sm font-medium mb-2">Itens do Pedido</p>
-                    <div className="space-y-2">
-                      {selectedOrder.items.map((item) => (
-                        <div key={item.id} className="flex justify-between text-sm">
-                          <span>{item.quantity}x {item.product_name}</span>
-                          <span>R$ {item.subtotal.toFixed(2)}</span>
+                  {/* Order Details */}
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm font-medium mb-2">Itens do Pedido</p>
+                      <div className="space-y-1.5">
+                        {selectedOrder.items.map((item) => (
+                          <div key={item.id} className="flex justify-between text-sm">
+                            <span>{item.quantity}x {item.product_name}</span>
+                            <span className="font-medium">R$ {item.subtotal.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Payment Method */}
+                    <div className="flex items-center justify-between py-2 border-t">
+                      <span className="text-sm text-muted-foreground">Forma de Pagamento</span>
+                      {getPaymentInfo(selectedOrder.payment_method) && (
+                        <div className={`flex items-center gap-2 ${getPaymentInfo(selectedOrder.payment_method)!.color}`}>
+                          {(() => {
+                            const PaymentIcon = getPaymentInfo(selectedOrder.payment_method)!.icon;
+                            return <PaymentIcon className="w-4 h-4" />;
+                          })()}
+                          <span className="font-medium">{getPaymentInfo(selectedOrder.payment_method)!.label}</span>
                         </div>
-                      ))}
+                      )}
+                    </div>
+
+                    {/* Delivery Info */}
+                    {selectedOrder.wants_delivery && selectedOrder.delivery_address && (
+                      <div className="py-2 border-t">
+                        <p className="text-sm font-medium mb-1 flex items-center gap-2">
+                          <Truck className="w-4 h-4" />
+                          Endereço de Entrega
+                        </p>
+                        <p className="text-sm text-muted-foreground">{selectedOrder.delivery_address}</p>
+                      </div>
+                    )}
+
+                    {selectedOrder.customer_notes && (
+                      <div className="py-2 border-t">
+                        <p className="text-sm font-medium mb-1">Observações</p>
+                        <p className="text-sm text-muted-foreground">{selectedOrder.customer_notes}</p>
+                      </div>
+                    )}
+
+                    {/* Totals */}
+                    <div className="pt-3 border-t space-y-1.5">
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal</span>
+                        <span>R$ {selectedOrder.subtotal.toFixed(2)}</span>
+                      </div>
+                      {selectedOrder.delivery_fee && selectedOrder.delivery_fee > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span>Taxa de entrega</span>
+                          <span>R$ {selectedOrder.delivery_fee.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <Separator />
+                      <div className="flex justify-between font-bold text-lg">
+                        <span>Total</span>
+                        <span className="text-primary">R$ {selectedOrder.total.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Delivery Info */}
-                  {selectedOrder.wants_delivery && selectedOrder.delivery_address && (
-                    <div>
-                      <p className="text-sm font-medium mb-1 flex items-center gap-2">
-                        <Truck className="w-4 h-4" />
-                        Endereço de Entrega
-                      </p>
-                      <p className="text-sm text-muted-foreground">{selectedOrder.delivery_address}</p>
-                    </div>
-                  )}
-
-                  {selectedOrder.customer_notes && (
-                    <div>
-                      <p className="text-sm font-medium mb-1">Observações</p>
-                      <p className="text-sm text-muted-foreground">{selectedOrder.customer_notes}</p>
-                    </div>
-                  )}
-
-                  {/* Totals */}
-                  <div className="border-t pt-3 space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span>Subtotal</span>
-                      <span>R$ {selectedOrder.subtotal.toFixed(2)}</span>
-                    </div>
-                    {selectedOrder.delivery_fee && selectedOrder.delivery_fee > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span>Taxa de entrega</span>
-                        <span>R$ {selectedOrder.delivery_fee.toFixed(2)}</span>
-                      </div>
+                  {/* Actions */}
+                  <div className="grid grid-cols-2 gap-2 pt-4">
+                    {selectedOrder.business.whatsapp && (
+                      <Button 
+                        variant="outline" 
+                        className="gap-2 border-green-500 text-green-600 hover:bg-green-50"
+                        onClick={() => openWhatsApp(selectedOrder)}
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        WhatsApp
+                      </Button>
                     )}
-                    <div className="flex justify-between font-bold text-lg">
-                      <span>Total</span>
-                      <span>R$ {selectedOrder.total.toFixed(2)}</span>
-                    </div>
+                    
+                    {selectedOrder.receipt_url && (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setReceiptToView(selectedOrder.receipt_url)}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Ver Comprovante
+                      </Button>
+                    )}
+
+                    {['pending', 'awaiting_payment'].includes(selectedOrder.status) && (
+                      <Button 
+                        variant="outline"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => setShowCancelDialog(true)}
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Cancelar
+                      </Button>
+                    )}
                   </div>
                 </div>
               </ScrollArea>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Cancel Dialog */}
+        <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancelar pedido?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja cancelar o pedido {selectedOrder?.order_number}? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Não, manter</AlertDialogCancel>
+              <AlertDialogAction onClick={handleCancelOrder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Sim, cancelar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Receipt Viewer */}
+        <Dialog open={!!receiptToView} onOpenChange={() => setReceiptToView(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Comprovante de Pagamento</DialogTitle>
+            </DialogHeader>
+            {receiptToView && (
+              <div className="flex justify-center">
+                <img 
+                  src={receiptToView} 
+                  alt="Comprovante" 
+                  className="max-h-[70vh] object-contain rounded-lg"
+                />
+              </div>
             )}
           </DialogContent>
         </Dialog>
@@ -376,9 +660,22 @@ export default function MyOrders() {
   );
 }
 
+function getStatusIndex(status: string, paymentStatus: string | null): number {
+  const statusOrder = ['pending', 'awaiting_payment', 'pending_confirmation', 'confirmed', 'preparing', 'ready', 'delivered'];
+  const currentStatus = paymentStatus || status;
+  return statusOrder.indexOf(currentStatus);
+}
+
+function isCurrentStatus(status: string, paymentStatus: string | null, checkStatus: string): boolean {
+  if (paymentStatus && ['awaiting_payment', 'pending_confirmation', 'confirmed'].includes(paymentStatus)) {
+    return paymentStatus === checkStatus;
+  }
+  return status === checkStatus;
+}
+
 function OrderCard({ order, onSelect }: { order: Order; onSelect: (order: Order) => void }) {
-  const statusInfo = ORDER_STATUS.find(s => s.value === order.status) || ORDER_STATUS[0];
-  const StatusIcon = statusInfo.icon;
+  const statusInfo = ORDER_STATUS.find(s => s.value === order.status || s.value === order.payment_status) || ORDER_STATUS[0];
+  const paymentInfo = order.payment_method ? PAYMENT_METHODS[order.payment_method as keyof typeof PAYMENT_METHODS] : null;
 
   return (
     <Card className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow" onClick={() => onSelect(order)}>
@@ -411,24 +708,28 @@ function OrderCard({ order, onSelect }: { order: Order; onSelect: (order: Order)
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded-full ${statusInfo.color} flex items-center justify-center`}>
-                  <StatusIcon className="w-3 h-3 text-white" />
-                </div>
-                <span className="text-sm">{statusInfo.label}</span>
-              </div>
+            <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
+              <Badge variant="outline" className="gap-1.5">
+                <span>{statusInfo.emoji}</span>
+                {statusInfo.label}
+              </Badge>
               
               <div className="flex items-center gap-2">
+                {paymentInfo && (
+                  <Badge variant="secondary" className={`gap-1 text-xs ${paymentInfo.color}`}>
+                    {(() => {
+                      const PaymentIcon = paymentInfo.icon;
+                      return <PaymentIcon className="w-3 h-3" />;
+                    })()}
+                    {paymentInfo.label}
+                  </Badge>
+                )}
                 {order.wants_delivery && (
                   <Badge variant="outline" className="text-xs gap-1">
                     <Truck className="w-3 h-3" />
                     Entrega
                   </Badge>
                 )}
-                <span className="text-xs text-muted-foreground">
-                  {order.items.length} {order.items.length === 1 ? 'item' : 'itens'}
-                </span>
               </div>
             </div>
           </div>

@@ -29,6 +29,8 @@ interface SidebarProps {
 
 const mainMenuItems = [
   { icon: Home, label: 'Feed', path: '/feed' },
+  { icon: Building2, label: 'Comércio', path: '/empresas' },
+  { icon: ShoppingBag, label: 'Meus Pedidos', path: '/meus-pedidos' },
   { icon: Compass, label: 'Explorar', path: '/explore' },
   { icon: Search, label: 'Buscar', path: '/search' },
   { icon: MessageCircle, label: 'Mensagens', path: '/messages', badge: true },
@@ -38,12 +40,10 @@ const communityMenuItems = [
   { icon: Users, label: 'Comunidade', path: '/community' },
   { icon: Calendar, label: 'Eventos', path: '/events' },
   { icon: Store, label: 'Marketplace', path: '/marketplace' },
-  { icon: Building2, label: 'Empresas', path: '/empresas' },
   { icon: Heart, label: 'Paquera', path: '/paquera' },
 ];
 
 const personalMenuItems = [
-  { icon: ShoppingBag, label: 'Meus Pedidos', path: '/meus-pedidos' },
   { icon: Bookmark, label: 'Salvos', path: '/saved' },
   { icon: Settings, label: 'Configurações', path: '/settings' },
 ];
