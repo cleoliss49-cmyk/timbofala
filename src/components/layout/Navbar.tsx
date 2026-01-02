@@ -12,6 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
+import { OrdersBadge } from '@/components/orders/OrdersBadge';
+import { BusinessOrdersBadge } from '@/components/orders/BusinessOrdersBadge';
 import { MessageCircle, Search, User, LogOut, Settings, Menu } from 'lucide-react';
 
 interface NavbarProps {
@@ -104,6 +106,11 @@ export function Navbar({ onMenuClick }: NavbarProps) {
             <Search className="w-5 h-5" />
           </Button>
 
+          {/* Customer Orders Badge */}
+          <OrdersBadge />
+
+          {/* Business Orders Badge */}
+          <BusinessOrdersBadge />
 
           {/* Messages */}
           <Button

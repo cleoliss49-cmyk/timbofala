@@ -156,7 +156,8 @@ export default function Business() {
     });
     toast({
       title: 'Adicionado ao carrinho',
-      description: product.name
+      description: product.name,
+      duration: 1000
     });
   };
 
