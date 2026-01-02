@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { 
   Home, 
@@ -14,7 +15,8 @@ import {
   Bookmark,
   X,
   PlusCircle,
-  Heart
+  Heart,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreatePostDialog } from '@/components/feed/CreatePostDialog';
@@ -35,6 +37,7 @@ const communityMenuItems = [
   { icon: Users, label: 'Comunidade', path: '/community' },
   { icon: Calendar, label: 'Eventos', path: '/events' },
   { icon: Store, label: 'Marketplace', path: '/marketplace' },
+  { icon: Building2, label: 'Empresas', path: '/empresas' },
   { icon: Heart, label: 'Paquera', path: '/paquera' },
 ];
 
@@ -45,8 +48,25 @@ const personalMenuItems = [
 
 export function Sidebar({ className, onClose }: SidebarProps) {
   const location = useLocation();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      checkBusinessProfile();
+    }
+  }, [user]);
+
+  const checkBusinessProfile = async () => {
+    const { data } = await supabase
+      .from('business_profiles')
+      .select('id')
+      .eq('user_id', user!.id)
+      .maybeSingle();
+    
+    setHasBusinessProfile(!!data);
+  };
 
   const renderMenuItem = (item: typeof mainMenuItems[0]) => {
     const path = item.path === '/profile' ? `/profile/${profile?.username}` : item.path;
@@ -128,6 +148,31 @@ export function Sidebar({ className, onClose }: SidebarProps) {
             </nav>
           </div>
 
+          {/* Business section */}
+          {user && (
+            <div>
+              <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Empresarial
+              </h3>
+              <nav className="space-y-1">
+                <Link
+                  to={hasBusinessProfile ? '/empresa/gerenciar' : '/empresa/criar'}
+                  onClick={onClose}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
+                    location.pathname.startsWith('/empresa')
+                      ? 'gradient-primary text-primary-foreground shadow-soft'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <Building2 className="w-5 h-5 transition-transform group-hover:scale-110" />
+                  <span className="flex-1">
+                    {hasBusinessProfile ? 'Minha Empresa' : 'Criar Conta Empresarial'}
+                  </span>
+                </Link>
+              </nav>
+            </div>
+          )}
         </div>
 
         {/* User card */}
