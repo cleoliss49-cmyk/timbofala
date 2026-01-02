@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getCategoryInfo } from '@/lib/productCategories';
 
 interface Product {
   id: string;
@@ -303,7 +304,16 @@ export default function Product() {
           {/* Product Info */}
           <div className="space-y-4">
             <div>
-              <Badge variant="secondary" className="mb-2">{product.category}</Badge>
+              {(() => {
+                const catInfo = getCategoryInfo(product.category);
+                const CatIcon = catInfo.icon;
+                return (
+                  <Badge variant="secondary" className={`mb-2 gap-1 ${catInfo.color} text-white border-0`}>
+                    <CatIcon className="w-3 h-3" />
+                    {product.category}
+                  </Badge>
+                );
+              })()}
               <h1 className="text-2xl md:text-3xl font-bold">{product.name}</h1>
               
               {/* Rating */}

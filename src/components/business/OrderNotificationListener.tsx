@@ -9,6 +9,7 @@ export function OrderNotificationListener() {
   const { toast } = useToast();
   const { playOrderSound } = useNotificationSound();
   const businessIdRef = useRef<string | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -28,11 +29,17 @@ export function OrderNotificationListener() {
     };
 
     checkBusinessProfile();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
   }, [user]);
 
   const setupRealtimeSubscription = (businessId: string) => {
-    const channel = supabase
-      .channel('order-notifications')
+    channelRef.current = supabase
+      .channel(`order-notifications-${businessId}`)
       .on(
         'postgres_changes',
         {
@@ -74,10 +81,6 @@ export function OrderNotificationListener() {
         }
       )
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   return null;

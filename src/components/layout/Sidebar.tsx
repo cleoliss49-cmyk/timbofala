@@ -16,7 +16,8 @@ import {
   X,
   PlusCircle,
   Heart,
-  Building2
+  Building2,
+  ShoppingBag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreatePostDialog } from '@/components/feed/CreatePostDialog';
@@ -42,6 +43,7 @@ const communityMenuItems = [
 ];
 
 const personalMenuItems = [
+  { icon: ShoppingBag, label: 'Meus Pedidos', path: '/meus-pedidos' },
   { icon: Bookmark, label: 'Salvos', path: '/saved' },
   { icon: Settings, label: 'Configurações', path: '/settings' },
 ];
