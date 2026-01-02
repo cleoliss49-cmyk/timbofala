@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   Store, MapPin, Phone, Mail, Globe, Clock, Truck, 
   ShoppingCart, Plus, Minus, MessageCircle, Instagram, 
-  Facebook, CheckCircle, Star, Package, Settings
+  Facebook, CheckCircle, Star, Package, Settings, ExternalLink
 } from 'lucide-react';
 import {
   Dialog,
@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { BusinessReviews } from '@/components/business/BusinessReviews';
 
 interface BusinessProfile {
   id: string;
@@ -75,7 +76,7 @@ interface CartItem {
 export default function Business() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
@@ -202,6 +203,7 @@ export default function Business() {
         description: 'Você precisa estar logado para finalizar a compra',
         variant: 'destructive'
       });
+      navigate('/auth');
       return;
     }
 
@@ -481,31 +483,38 @@ export default function Business() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filteredProducts.map(product => (
             <Card key={product.id} className="overflow-hidden group hover:shadow-lg transition-shadow">
-              <div className="aspect-square relative bg-muted">
-                {product.image_url ? (
-                  <img 
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Package className="w-12 h-12 text-muted-foreground/50" />
+              <Link to={`/empresa/${business.slug}/produto/${product.id}`}>
+                <div className="aspect-square relative bg-muted">
+                  {product.image_url ? (
+                    <img 
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Package className="w-12 h-12 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  {product.promotional_price && (
+                    <Badge className="absolute top-2 right-2 bg-red-500">
+                      Promoção
+                    </Badge>
+                  )}
+                  {product.allows_delivery && business?.offers_delivery && (
+                    <Badge variant="secondary" className="absolute top-2 left-2 gap-1">
+                      <Truck className="w-3 h-3" />
+                    </Badge>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <ExternalLink className="w-6 h-6 text-white drop-shadow-lg" />
                   </div>
-                )}
-                {product.promotional_price && (
-                  <Badge className="absolute top-2 right-2 bg-red-500">
-                    Promoção
-                  </Badge>
-                )}
-                {product.allows_delivery && business?.offers_delivery && (
-                  <Badge variant="secondary" className="absolute top-2 left-2 gap-1">
-                    <Truck className="w-3 h-3" />
-                  </Badge>
-                )}
-              </div>
+                </div>
+              </Link>
               <CardContent className="p-3 space-y-2">
-                <h3 className="font-medium line-clamp-2">{product.name}</h3>
+                <Link to={`/empresa/${business.slug}/produto/${product.id}`}>
+                  <h3 className="font-medium line-clamp-2 hover:text-primary transition-colors">{product.name}</h3>
+                </Link>
                 {product.description && (
                   <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>
                 )}
@@ -530,7 +539,10 @@ export default function Business() {
                 <Button 
                   className="w-full" 
                   size="sm"
-                  onClick={() => addToCart(product)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    addToCart(product);
+                  }}
                   disabled={isOwner}
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
@@ -547,6 +559,9 @@ export default function Business() {
             <p className="text-muted-foreground">Nenhum produto disponível</p>
           </div>
         )}
+
+        {/* Reviews Section */}
+        <BusinessReviews businessId={business.id} businessOwnerId={business.user_id} />
 
         {/* Floating Cart Button */}
         {cart.length > 0 && !isOwner && (
@@ -654,7 +669,20 @@ export default function Business() {
               <Button variant="outline" onClick={() => setShowCart(false)}>
                 Continuar comprando
               </Button>
-              <Button onClick={() => { setShowCart(false); setShowCheckout(true); }}>
+              <Button onClick={() => { 
+                if (!user) {
+                  toast({
+                    title: 'Faça login',
+                    description: 'Você precisa estar logado para finalizar a compra',
+                    variant: 'destructive'
+                  });
+                  setShowCart(false);
+                  navigate('/auth');
+                  return;
+                }
+                setShowCart(false); 
+                setShowCheckout(true); 
+              }}>
                 Finalizar pedido
               </Button>
             </DialogFooter>
