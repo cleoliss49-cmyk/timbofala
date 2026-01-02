@@ -27,6 +27,7 @@ import Businesses from "./pages/Businesses";
 import Business from "./pages/Business";
 import BusinessSetup from "./pages/BusinessSetup";
 import BusinessManage from "./pages/BusinessManage";
+import BusinessProduct from "./pages/BusinessProduct";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
             <Route path="/empresa/criar" element={<BusinessSetup />} />
             <Route path="/empresa/gerenciar" element={<BusinessManage />} />
             <Route path="/empresa/:slug" element={<Business />} />
+            <Route path="/empresa/:businessSlug/produto/:productId" element={<BusinessProduct />} />
             <Route path="/admtbo" element={<AdminAuth />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />

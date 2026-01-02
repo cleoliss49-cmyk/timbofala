@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Bell, Heart, MessageCircle, UserPlus, Mail, X, Check, CheckCheck } from 'lucide-react';
+import { Bell, Heart, MessageCircle, UserPlus, Mail, X, Check, CheckCheck, ShoppingBag } from 'lucide-react';
 import { 
   Popover,
   PopoverContent,
@@ -13,8 +13,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
-type NotificationType = 'like' | 'comment' | 'follow' | 'message' | 'mention';
+type NotificationType = 'like' | 'comment' | 'follow' | 'message' | 'mention' | 'order' | 'paquera_match';
 
 interface Notification {
   id: string;
@@ -35,6 +36,7 @@ interface Notification {
 export function NotificationsPanel() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { playNotificationSound } = useNotificationSound();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -129,6 +131,9 @@ export function NotificationsPanel() {
 
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
+          
+          // Play notification sound
+          playNotificationSound();
         }
       )
       .subscribe();
@@ -204,6 +209,10 @@ export function NotificationsPanel() {
       navigate('/messages');
     } else if ((notification.type === 'like' || notification.type === 'comment') && notification.post_id) {
       navigate('/feed');
+    } else if (notification.type === 'order') {
+      navigate('/empresa/gerenciar');
+    } else if (notification.type === 'paquera_match') {
+      navigate('/paquera');
     }
 
     setIsOpen(false);
@@ -219,6 +228,10 @@ export function NotificationsPanel() {
         return <UserPlus className="w-4 h-4 text-emerald-500" />;
       case 'message':
         return <Mail className="w-4 h-4 text-purple-500" />;
+      case 'order':
+        return <ShoppingBag className="w-4 h-4 text-orange-500" />;
+      case 'paquera_match':
+        return <Heart className="w-4 h-4 text-pink-500 fill-pink-500" />;
       default:
         return <Bell className="w-4 h-4 text-muted-foreground" />;
     }
@@ -293,6 +306,9 @@ export function NotificationsPanel() {
                         {notification.type === 'comment' && 'comentou na sua publicação'}
                         {notification.type === 'follow' && 'começou a seguir você'}
                         {notification.type === 'message' && 'enviou uma mensagem'}
+                        {notification.type === 'order' && 'fez um pedido na sua loja'}
+                        {notification.type === 'paquera_match' && 'deu match com você!'}
+                        {notification.type === 'mention' && 'mencionou você'}
                       </span>
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
