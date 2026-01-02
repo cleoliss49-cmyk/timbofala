@@ -338,10 +338,16 @@ export default function Profile() {
 
             <div className="flex gap-2 flex-wrap">
               {isOwnProfile ? (
-                <Button variant="outline" onClick={() => setShowEditDialog(true)}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Editar perfil
-                </Button>
+                <>
+                  <Button variant="outline" onClick={() => setShowDetailsDialog(true)}>
+                    <Info className="w-4 h-4 mr-2" />
+                    Ver detalhes
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowEditDialog(true)}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Editar perfil
+                  </Button>
+                </>
               ) : (
                 <>
                   <Button
