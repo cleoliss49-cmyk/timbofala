@@ -91,19 +91,7 @@ interface Order {
   }[];
 }
 
-const PRODUCT_CATEGORIES = [
-  'Geral',
-  'Alimentação',
-  'Bebidas',
-  'Doces',
-  'Salgados',
-  'Roupas',
-  'Acessórios',
-  'Eletrônicos',
-  'Casa',
-  'Beleza',
-  'Outros'
-];
+import { PRODUCT_CATEGORIES, getCategoryInfo } from '@/lib/productCategories';
 
 const ORDER_STATUS = [
   { value: 'pending', label: 'Pendente', color: 'bg-yellow-500' },
@@ -554,6 +542,18 @@ export default function BusinessManage() {
                       )}
                     </div>
                     <CardContent className="p-3">
+                      <div className="flex items-center gap-1 mb-1">
+                        {(() => {
+                          const catInfo = getCategoryInfo(product.category);
+                          const CatIcon = catInfo.icon;
+                          return (
+                            <Badge variant="outline" className={`text-xs gap-1 ${catInfo.color} text-white border-0`}>
+                              <CatIcon className="w-3 h-3" />
+                              {product.category}
+                            </Badge>
+                          );
+                        })()}
+                      </div>
                       <h3 className="font-medium text-sm line-clamp-1">{product.name}</h3>
                       <div className="flex items-center justify-between mt-1">
                         {product.promotional_price ? (
@@ -759,7 +759,12 @@ export default function BusinessManage() {
                       </SelectTrigger>
                       <SelectContent>
                         {PRODUCT_CATEGORIES.map(cat => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          <SelectItem key={cat.value} value={cat.value}>
+                            <div className="flex items-center gap-2">
+                              <cat.icon className="w-4 h-4" />
+                              {cat.label}
+                            </div>
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

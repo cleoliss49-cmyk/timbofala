@@ -28,6 +28,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { BusinessReviews } from '@/components/business/BusinessReviews';
+import { getCategoryInfo } from '@/lib/productCategories';
 
 interface BusinessProfile {
   id: string;
@@ -465,17 +466,22 @@ export default function Business() {
         {/* Categories */}
         {categories.length > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {categories.map(cat => (
-              <Button
-                key={cat}
-                variant={selectedCategory === cat ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedCategory(cat)}
-                className="whitespace-nowrap"
-              >
-                {cat === 'todos' ? 'Todos' : cat}
-              </Button>
-            ))}
+            {categories.map(cat => {
+              const catInfo = cat === 'todos' ? null : getCategoryInfo(cat);
+              const CatIcon = catInfo?.icon;
+              return (
+                <Button
+                  key={cat}
+                  variant={selectedCategory === cat ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedCategory(cat)}
+                  className="whitespace-nowrap gap-2"
+                >
+                  {CatIcon && <CatIcon className="w-4 h-4" />}
+                  {cat === 'todos' ? 'Todos' : cat}
+                </Button>
+              );
+            })}
           </div>
         )}
 
