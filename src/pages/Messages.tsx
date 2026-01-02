@@ -10,7 +10,23 @@ import { useToast } from '@/hooks/use-toast';
 import { CallInterface } from '@/components/calls/CallInterface';
 import { AudioRecorder } from '@/components/chat/AudioRecorder';
 import { useMessageSound } from '@/hooks/useMessageSound';
-import { Send, ArrowLeft, Phone, Video, Volume2 } from 'lucide-react';
+import { Send, ArrowLeft, Phone, Video, Volume2, Trash2, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -58,6 +74,8 @@ export default function Messages() {
   const [loading, setLoading] = useState(true);
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const [sendingAudio, setSendingAudio] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Handle pre-filled message from marketplace
@@ -292,6 +310,38 @@ export default function Messages() {
     });
   };
 
+  const deleteConversation = async (partnerId: string) => {
+    if (!user) return;
+
+    try {
+      // Delete all messages between the two users
+      await supabase
+        .from('messages')
+        .delete()
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user.id})`);
+
+      toast({
+        title: 'Conversa excluída',
+        description: 'A conversa foi removida com sucesso.',
+      });
+
+      // If we're viewing this conversation, go back to messages list
+      if (recipientId === partnerId) {
+        navigate('/messages');
+      }
+
+      fetchConversations();
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível excluir a conversa.',
+        variant: 'destructive',
+      });
+    }
+    setDeleteDialogOpen(false);
+    setConversationToDelete(null);
+  };
+
   const renderMessageContent = (content: string) => {
     if (content.startsWith('🎤 Mensagem de áudio:')) {
       const audioUrl = content.replace('🎤 Mensagem de áudio: ', '');
@@ -327,35 +377,58 @@ export default function Messages() {
                   </div>
                 ) : (
                   conversations.map((convo) => (
-                    <button
+                    <div
                       key={convo.user.id}
-                      onClick={() => navigate(`/messages/${convo.user.id}`)}
                       className={`w-full flex items-center gap-3 p-4 hover:bg-muted transition-colors ${
                         recipientId === convo.user.id ? 'bg-muted' : ''
                       }`}
                     >
-                      <Avatar className="w-12 h-12 shrink-0">
-                        <AvatarImage src={convo.user.avatar_url || undefined} />
-                        <AvatarFallback className="gradient-secondary text-secondary-foreground">
-                          {convo.user.full_name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0 text-left">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium truncate">{convo.user.full_name}</p>
-                          {convo.unreadCount > 0 && (
-                            <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-                              {convo.unreadCount}
-                            </span>
+                      <button
+                        onClick={() => navigate(`/messages/${convo.user.id}`)}
+                        className="flex items-center gap-3 flex-1 min-w-0"
+                      >
+                        <Avatar className="w-12 h-12 shrink-0">
+                          <AvatarImage src={convo.user.avatar_url || undefined} />
+                          <AvatarFallback className="gradient-secondary text-secondary-foreground">
+                            {convo.user.full_name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium truncate">{convo.user.full_name}</p>
+                            {convo.unreadCount > 0 && (
+                              <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                                {convo.unreadCount}
+                              </span>
+                            )}
+                          </div>
+                          {convo.lastMessage && (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {convo.lastMessage.content.startsWith('🎤') ? '🎤 Áudio' : convo.lastMessage.content}
+                            </p>
                           )}
                         </div>
-                        {convo.lastMessage && (
-                          <p className="text-sm text-muted-foreground truncate">
-                            {convo.lastMessage.content.startsWith('🎤') ? '🎤 Áudio' : convo.lastMessage.content}
-                          </p>
-                        )}
-                      </div>
-                    </button>
+                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="shrink-0">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => {
+                              setConversationToDelete(convo.user.id);
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Excluir conversa
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   ))
                 )}
               </div>
@@ -446,6 +519,26 @@ export default function Messages() {
           onClose={() => setActiveCall(null)}
         />
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá excluir todas as mensagens desta conversa permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => conversationToDelete && deleteConversation(conversationToDelete)}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

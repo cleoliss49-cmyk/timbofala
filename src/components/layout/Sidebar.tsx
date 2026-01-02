@@ -6,14 +6,12 @@ import {
   Home, 
   Users, 
   MessageCircle, 
-  User, 
   Search, 
   Calendar, 
   Store, 
   Settings,
   Compass,
   Bookmark,
-  TrendingUp,
   X,
   PlusCircle,
   Heart
@@ -130,27 +128,6 @@ export function Sidebar({ className, onClose }: SidebarProps) {
             </nav>
           </div>
 
-          {/* Trending */}
-          <div className="bg-muted/50 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold">Trending em Timbó</span>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">#FestivalDePrimavera</span>
-                <span className="text-xs text-muted-foreground">120 posts</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">#TimboFala</span>
-                <span className="text-xs text-muted-foreground">85 posts</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">#ComercioLocal</span>
-                <span className="text-xs text-muted-foreground">64 posts</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* User card */}
