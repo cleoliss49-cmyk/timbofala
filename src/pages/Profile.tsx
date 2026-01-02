@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Calendar, Settings, MessageCircle, UserPlus, UserMinus, Facebook, Instagram, Twitter, Camera, ImagePlus } from 'lucide-react';
+import { MapPin, Calendar, Settings, MessageCircle, UserPlus, UserMinus, Facebook, Instagram, Twitter, Camera, ImagePlus, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { EditProfileDialog } from '@/components/dialogs/EditProfileDialog';
 import { FollowersDialog } from '@/components/dialogs/FollowersDialog';
+import { ProfileDetailsDialog } from '@/components/dialogs/ProfileDetailsDialog';
 
 interface ProfileData {
   id: string;
@@ -29,6 +30,17 @@ interface ProfileData {
   tiktok_url: string | null;
   kwai_url: string | null;
   created_at: string;
+  gender: string | null;
+  relationship_status: string | null;
+  birth_date: string | null;
+  languages: string[] | null;
+  education: string | null;
+  profession: string | null;
+  show_relationship_status: boolean | null;
+  show_birth_date: boolean | null;
+  show_languages: boolean | null;
+  show_education: boolean | null;
+  show_profession: boolean | null;
 }
 
 export default function Profile() {
@@ -46,6 +58,7 @@ export default function Profile() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showFollowersDialog, setShowFollowersDialog] = useState(false);
   const [followersTab, setFollowersTab] = useState<'followers' | 'following'>('followers');
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const isOwnProfile = currentUserProfile?.username === username;
 
   const fetchProfile = async () => {
@@ -323,7 +336,7 @@ export default function Profile() {
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {isOwnProfile ? (
                 <Button variant="outline" onClick={() => setShowEditDialog(true)}>
                   <Settings className="w-4 h-4 mr-2" />
@@ -331,6 +344,13 @@ export default function Profile() {
                 </Button>
               ) : (
                 <>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDetailsDialog(true)}
+                  >
+                    <Info className="w-4 h-4 mr-2" />
+                    Ver detalhes
+                  </Button>
                   <Button
                     variant={isFollowing ? 'outline' : 'default'}
                     onClick={handleFollow}
@@ -385,6 +405,12 @@ export default function Profile() {
           refreshProfile();
           fetchProfile();
         }}
+      />
+
+      <ProfileDetailsDialog
+        open={showDetailsDialog}
+        onOpenChange={setShowDetailsDialog}
+        profile={profileData}
       />
     </MainLayout>
   );

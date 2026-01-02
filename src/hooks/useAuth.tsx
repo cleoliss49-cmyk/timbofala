@@ -19,6 +19,17 @@ interface Profile {
   accepted_terms: boolean;
   created_at: string;
   updated_at: string;
+  gender: string | null;
+  relationship_status: string | null;
+  birth_date: string | null;
+  languages: string[] | null;
+  education: string | null;
+  profession: string | null;
+  show_relationship_status: boolean | null;
+  show_birth_date: boolean | null;
+  show_languages: boolean | null;
+  show_education: boolean | null;
+  show_profession: boolean | null;
 }
 
 interface AuthContextType {
