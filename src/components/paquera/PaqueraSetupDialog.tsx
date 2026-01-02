@@ -323,7 +323,14 @@ export function PaqueraSetupDialog({
                   min={18}
                   max={99}
                   value={formData.age_range_min}
-                  onChange={(e) => setFormData(prev => ({ ...prev, age_range_min: parseInt(e.target.value) }))}
+                  onChange={(e) => {
+                    const val = Math.max(18, parseInt(e.target.value) || 18);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      age_range_min: val,
+                      age_range_max: Math.max(val, prev.age_range_max)
+                    }));
+                  }}
                 />
               </div>
               <div>
@@ -333,7 +340,13 @@ export function PaqueraSetupDialog({
                   min={18}
                   max={99}
                   value={formData.age_range_max}
-                  onChange={(e) => setFormData(prev => ({ ...prev, age_range_max: parseInt(e.target.value) }))}
+                  onChange={(e) => {
+                    const val = Math.max(18, parseInt(e.target.value) || 18);
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      age_range_max: Math.max(val, prev.age_range_min)
+                    }));
+                  }}
                 />
               </div>
             </div>

@@ -83,26 +83,51 @@ export default function Paquera() {
   };
 
   const fetchProfiles = async (myProfile: PaqueraProfile) => {
-    // Fetch profiles based on preferences
-    const { data } = await supabase
+    // Build the query based on looking_for_gender
+    let query = supabase
       .from('paquera_profiles')
       .select('*')
       .neq('user_id', user?.id)
-      .eq('is_active', true)
-      .eq('gender', myProfile.looking_for_gender);
+      .eq('is_active', true);
 
-    if (data) {
+    // Filter by gender the user is looking for
+    if (myProfile.looking_for_gender !== 'other') {
+      query = query.eq('gender', myProfile.looking_for_gender);
+    }
+
+    // Also, we should only show profiles where the OTHER person would be interested in seeing MY gender
+    // This ensures mutual compatibility
+    
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching profiles:', error);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      // Filter profiles where their looking_for_gender matches my gender
+      const compatibleProfiles = data.filter(p => 
+        p.looking_for_gender === 'other' || p.looking_for_gender === myProfile.gender
+      );
+
       // Get user profiles for these paquera profiles
-      const userIds = data.map(p => p.user_id);
-      const { data: profiles } = await supabase
+      const userIds = compatibleProfiles.map(p => p.user_id);
+      
+      if (userIds.length === 0) {
+        setProfiles([]);
+        return;
+      }
+
+      const { data: userProfiles } = await supabase
         .from('profiles')
         .select('id, full_name, username, birth_date')
         .in('id', userIds);
 
       // Merge the data
-      const enrichedData = data.map(p => ({
+      const enrichedData = compatibleProfiles.map(p => ({
         ...p,
-        user_profile: profiles?.find(up => up.id === p.user_id),
+        user_profile: userProfiles?.find(up => up.id === p.user_id),
       }));
 
       // Filter out already liked profiles
@@ -116,6 +141,8 @@ export default function Paquera() {
       
       // Shuffle profiles
       setProfiles(filtered.sort(() => Math.random() - 0.5));
+    } else {
+      setProfiles([]);
     }
   };
 
