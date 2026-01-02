@@ -428,11 +428,17 @@ export default function BusinessManage() {
             </div>
             <p className="text-muted-foreground">Gerencie sua loja empresarial</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>
               <Link to={`/empresa/${business.slug}`}>
                 <Eye className="w-4 h-4 mr-2" />
                 Ver Loja
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/empresa/pagamentos">
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Pagamentos
               </Link>
             </Button>
             <Button onClick={() => { resetProductForm(); setShowProductDialog(true); }}>
@@ -856,11 +862,30 @@ export default function BusinessManage() {
 
             {selectedOrder && (
               <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium">Cliente</p>
-                  <p className="text-muted-foreground">{selectedOrder.customer?.full_name}</p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Cliente</p>
+                    <p className="text-muted-foreground">{selectedOrder.customer?.full_name}</p>
+                    {selectedOrder.customer_phone && (
+                      <p className="text-muted-foreground">{selectedOrder.customer_phone}</p>
+                    )}
+                  </div>
                   {selectedOrder.customer_phone && (
-                    <p className="text-muted-foreground">{selectedOrder.customer_phone}</p>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="gap-2 border-green-500 text-green-600 hover:bg-green-50"
+                      onClick={() => {
+                        const phone = selectedOrder.customer_phone?.replace(/\D/g, '');
+                        const message = encodeURIComponent(
+                          `Olá! Sobre seu pedido ${selectedOrder.order_number} em nossa loja.`
+                        );
+                        window.open(`https://wa.me/55${phone}?text=${message}`, '_blank');
+                      }}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      WhatsApp
+                    </Button>
                   )}
                 </div>
 

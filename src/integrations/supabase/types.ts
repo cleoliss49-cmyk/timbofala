@@ -224,6 +224,44 @@ export type Database = {
           },
         ]
       }
+      business_delivery_zones: {
+        Row: {
+          business_id: string
+          city: string
+          created_at: string
+          delivery_fee: number
+          id: string
+          is_active: boolean
+          neighborhood: string
+        }
+        Insert: {
+          business_id: string
+          city?: string
+          created_at?: string
+          delivery_fee?: number
+          id?: string
+          is_active?: boolean
+          neighborhood: string
+        }
+        Update: {
+          business_id?: string
+          city?: string
+          created_at?: string
+          delivery_fee?: number
+          id?: string
+          is_active?: boolean
+          neighborhood?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_delivery_zones_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_order_items: {
         Row: {
           created_at: string
@@ -278,6 +316,7 @@ export type Database = {
           coupon_id: string | null
           created_at: string
           customer_id: string
+          customer_neighborhood: string | null
           customer_notes: string | null
           customer_phone: string | null
           delivery_address: string | null
@@ -285,6 +324,9 @@ export type Database = {
           discount_amount: number | null
           id: string
           order_number: string
+          payment_method: string | null
+          payment_status: string | null
+          pix_code: string | null
           status: string
           subtotal: number
           total: number
@@ -296,6 +338,7 @@ export type Database = {
           coupon_id?: string | null
           created_at?: string
           customer_id: string
+          customer_neighborhood?: string | null
           customer_notes?: string | null
           customer_phone?: string | null
           delivery_address?: string | null
@@ -303,6 +346,9 @@ export type Database = {
           discount_amount?: number | null
           id?: string
           order_number: string
+          payment_method?: string | null
+          payment_status?: string | null
+          pix_code?: string | null
           status?: string
           subtotal: number
           total: number
@@ -314,6 +360,7 @@ export type Database = {
           coupon_id?: string | null
           created_at?: string
           customer_id?: string
+          customer_neighborhood?: string | null
           customer_notes?: string | null
           customer_phone?: string | null
           delivery_address?: string | null
@@ -321,6 +368,9 @@ export type Database = {
           discount_amount?: number | null
           id?: string
           order_number?: string
+          payment_method?: string | null
+          payment_status?: string | null
+          pix_code?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -466,6 +516,9 @@ export type Database = {
           offers_delivery: boolean
           opening_hours: Json | null
           phone: string | null
+          pix_holder_name: string | null
+          pix_key: string | null
+          pix_key_type: string | null
           slug: string
           updated_at: string
           user_id: string
@@ -493,6 +546,9 @@ export type Database = {
           offers_delivery?: boolean
           opening_hours?: Json | null
           phone?: string | null
+          pix_holder_name?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           slug: string
           updated_at?: string
           user_id: string
@@ -520,6 +576,9 @@ export type Database = {
           offers_delivery?: boolean
           opening_hours?: Json | null
           phone?: string | null
+          pix_holder_name?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
           slug?: string
           updated_at?: string
           user_id?: string

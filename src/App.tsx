@@ -29,6 +29,7 @@ import BusinessSetup from "./pages/BusinessSetup";
 import BusinessManage from "./pages/BusinessManage";
 import BusinessProduct from "./pages/BusinessProduct";
 import MyOrders from "./pages/MyOrders";
+import BusinessPaymentSettings from "./pages/BusinessPaymentSettings";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/empresas" element={<Businesses />} />
             <Route path="/empresa/criar" element={<BusinessSetup />} />
             <Route path="/empresa/gerenciar" element={<BusinessManage />} />
+            <Route path="/empresa/pagamentos" element={<BusinessPaymentSettings />} />
             <Route path="/empresa/:slug" element={<Business />} />
             <Route path="/empresa/:businessSlug/produto/:productId" element={<BusinessProduct />} />
             <Route path="/meus-pedidos" element={<MyOrders />} />
