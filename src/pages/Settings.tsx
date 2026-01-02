@@ -4,15 +4,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Settings as SettingsIcon, LogOut, Shield, Bell, User } from 'lucide-react';
+import { Settings as SettingsIcon, LogOut, Shield, Bell, User, Trash2 } from 'lucide-react';
 import { EditProfileDialog } from '@/components/dialogs/EditProfileDialog';
+import { DeleteAccountDialog } from '@/components/dialogs/DeleteAccountDialog';
 
 export default function Settings() {
   const { signOut, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showEditProfile, setShowEditProfile] = useState(false);
-
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
@@ -80,6 +81,21 @@ export default function Settings() {
           <div className="border-t border-border" />
 
           <button
+            onClick={() => setShowDeleteAccount(true)}
+            className="w-full flex items-center gap-4 p-4 hover:bg-destructive/10 transition-colors text-left text-destructive"
+          >
+            <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-medium">Excluir conta</p>
+              <p className="text-sm opacity-80">Excluir permanentemente sua conta</p>
+            </div>
+          </button>
+
+          <div className="border-t border-border" />
+
+          <button
             onClick={handleSignOut}
             className="w-full flex items-center gap-4 p-4 hover:bg-destructive/10 transition-colors text-left text-destructive"
           >
@@ -111,6 +127,11 @@ export default function Settings() {
         open={showEditProfile}
         onOpenChange={setShowEditProfile}
         onUpdate={refreshProfile}
+      />
+
+      <DeleteAccountDialog
+        open={showDeleteAccount}
+        onOpenChange={setShowDeleteAccount}
       />
     </MainLayout>
   );

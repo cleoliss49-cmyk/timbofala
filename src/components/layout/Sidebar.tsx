@@ -15,7 +15,8 @@ import {
   Bookmark,
   TrendingUp,
   X,
-  PlusCircle
+  PlusCircle,
+  Heart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreatePostDialog } from '@/components/feed/CreatePostDialog';
@@ -36,6 +37,7 @@ const communityMenuItems = [
   { icon: Users, label: 'Comunidade', path: '/community' },
   { icon: Calendar, label: 'Eventos', path: '/events' },
   { icon: Store, label: 'Marketplace', path: '/marketplace' },
+  { icon: Heart, label: 'Paquera', path: '/paquera' },
 ];
 
 const personalMenuItems = [
