@@ -127,7 +127,12 @@ export default function BusinessManage() {
     category: 'Geral',
     stock_quantity: '',
     is_available: true,
-    allows_delivery: true
+    allows_delivery: true,
+    accepts_pix: true,
+    accepts_cash: true,
+    accepts_debit: true,
+    accepts_credit: true,
+    prep_time_minutes: ''
   });
 
   useEffect(() => {
@@ -227,7 +232,12 @@ export default function BusinessManage() {
       category: 'Geral',
       stock_quantity: '',
       is_available: true,
-      allows_delivery: true
+      allows_delivery: true,
+      accepts_pix: true,
+      accepts_cash: true,
+      accepts_debit: true,
+      accepts_credit: true,
+      prep_time_minutes: ''
     });
     setImageFile(null);
     setImagePreview('');
@@ -244,7 +254,12 @@ export default function BusinessManage() {
       category: product.category,
       stock_quantity: product.stock_quantity?.toString() || '',
       is_available: product.is_available,
-      allows_delivery: product.allows_delivery
+      allows_delivery: product.allows_delivery,
+      accepts_pix: (product as any).accepts_pix ?? true,
+      accepts_cash: (product as any).accepts_cash ?? true,
+      accepts_debit: (product as any).accepts_debit ?? true,
+      accepts_credit: (product as any).accepts_credit ?? true,
+      prep_time_minutes: (product as any).prep_time_minutes?.toString() || ''
     });
     setImagePreview(product.image_url || '');
     setShowProductDialog(true);
@@ -303,6 +318,11 @@ export default function BusinessManage() {
         stock_quantity: productForm.stock_quantity ? parseInt(productForm.stock_quantity) : null,
         is_available: productForm.is_available,
         allows_delivery: productForm.allows_delivery,
+        accepts_pix: productForm.accepts_pix,
+        accepts_cash: productForm.accepts_cash,
+        accepts_debit: productForm.accepts_debit,
+        accepts_credit: productForm.accepts_credit,
+        prep_time_minutes: productForm.prep_time_minutes ? parseInt(productForm.prep_time_minutes) : null,
         image_url
       };
 
@@ -811,6 +831,59 @@ export default function BusinessManage() {
                     />
                   </div>
                 )}
+
+                <div>
+                  <Label htmlFor="prep_time">Tempo de preparo (minutos)</Label>
+                  <Input
+                    id="prep_time"
+                    type="number"
+                    min="0"
+                    value={productForm.prep_time_minutes}
+                    onChange={(e) => setProductForm(prev => ({ ...prev, prep_time_minutes: e.target.value }))}
+                    placeholder="Ex: 30"
+                  />
+                </div>
+
+                {/* Payment Options */}
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-base">Formas de Pagamento Aceitas</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Você receberá na chave PIX configurada em Pagamentos. Não intermediamos!
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-2 border rounded-lg">
+                      <span className="text-sm">PIX</span>
+                      <Switch
+                        checked={productForm.accepts_pix}
+                        onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, accepts_pix: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-2 border rounded-lg">
+                      <span className="text-sm">Dinheiro</span>
+                      <Switch
+                        checked={productForm.accepts_cash}
+                        onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, accepts_cash: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-2 border rounded-lg">
+                      <span className="text-sm">Débito</span>
+                      <Switch
+                        checked={productForm.accepts_debit}
+                        onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, accepts_debit: checked }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between p-2 border rounded-lg">
+                      <span className="text-sm">Crédito</span>
+                      <Switch
+                        checked={productForm.accepts_credit}
+                        onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, accepts_credit: checked }))}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </ScrollArea>
 

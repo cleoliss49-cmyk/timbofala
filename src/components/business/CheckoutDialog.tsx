@@ -25,10 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Wallet, CreditCard, Banknote, Copy, CheckCircle, 
-  Truck, MapPin, MessageCircle
+  Wallet, CreditCard, Banknote, Loader2,
+  Truck, MapPin, MessageCircle, AlertCircle
 } from 'lucide-react';
+import { PixPaymentDialog } from './PixPaymentDialog';
 
 interface DeliveryZone {
   id: string;
@@ -55,6 +57,10 @@ interface CartItem {
     price: number;
     promotional_price: number | null;
     allows_delivery: boolean;
+    accepts_pix?: boolean;
+    accepts_cash?: boolean;
+    accepts_debit?: boolean;
+    accepts_credit?: boolean;
   };
   quantity: number;
   wants_delivery: boolean;
@@ -80,11 +86,14 @@ export function CheckoutDialog({
   const { toast } = useToast();
   
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [showPixCode, setShowPixCode] = useState(false);
-  const [pixCopied, setPixCopied] = useState(false);
-  const [orderNumber, setOrderNumber] = useState('');
+  const [showPixPayment, setShowPixPayment] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState<{
+    id: string;
+    orderNumber: string;
+    total: number;
+    productNames: string[];
+  } | null>(null);
   
   const [formData, setFormData] = useState({
     whatsapp: '',
@@ -95,9 +104,22 @@ export function CheckoutDialog({
     wants_delivery: false
   });
 
+  // Determine available payment methods based on products
+  const availablePaymentMethods = {
+    pix: cart.every(item => item.product.accepts_pix !== false) && business.pix_key,
+    cash: cart.every(item => item.product.accepts_cash !== false),
+    debit: cart.every(item => item.product.accepts_debit !== false),
+    credit: cart.every(item => item.product.accepts_credit !== false)
+  };
+
   useEffect(() => {
     if (open && business) {
       fetchDeliveryZones();
+      // Set default payment method to first available
+      if (availablePaymentMethods.cash) setFormData(prev => ({ ...prev, payment_method: 'cash' }));
+      else if (availablePaymentMethods.pix) setFormData(prev => ({ ...prev, payment_method: 'pix' }));
+      else if (availablePaymentMethods.debit) setFormData(prev => ({ ...prev, payment_method: 'debit' }));
+      else if (availablePaymentMethods.credit) setFormData(prev => ({ ...prev, payment_method: 'credit' }));
     }
   }, [open, business]);
 
@@ -124,30 +146,14 @@ export function CheckoutDialog({
   const calculateDeliveryFee = () => {
     if (!formData.wants_delivery) return 0;
     
-    // Check for zone-specific fee
     const zone = deliveryZones.find(z => z.neighborhood === formData.neighborhood);
-    if (zone) {
-      return zone.delivery_fee;
-    }
+    if (zone) return zone.delivery_fee;
     
-    // Fall back to default fee
     return business.delivery_fee || 0;
   };
 
   const calculateTotal = () => {
     return calculateSubtotal() + calculateDeliveryFee();
-  };
-
-  const generatePixCode = (orderNum: string) => {
-    // Generate a simple PIX code (in production this would be a proper PIX API)
-    if (!business.pix_key) return null;
-    
-    const holderName = business.pix_holder_name || business.business_name;
-    const amount = calculateTotal().toFixed(2);
-    const description = `Pedido ${orderNum} - ${profile?.full_name || 'Cliente'}`;
-    
-    // Simplified PIX copy-paste code format
-    return `${business.pix_key}\nValor: R$ ${amount}\nDescrição: ${description}\nRecebedor: ${holderName}`;
   };
 
   const handleSubmit = async () => {
@@ -192,7 +198,6 @@ export function CheckoutDialog({
     try {
       const newOrderNumber = 'TF' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
       
-      // Create order
       const { data: order, error: orderError } = await supabase
         .from('business_orders')
         .insert({
@@ -208,15 +213,13 @@ export function CheckoutDialog({
           customer_notes: formData.notes || null,
           customer_neighborhood: formData.neighborhood || null,
           payment_method: formData.payment_method,
-          payment_status: formData.payment_method === 'pix' ? 'pending' : 'pending',
-          pix_code: formData.payment_method === 'pix' ? generatePixCode(newOrderNumber) : null
+          payment_status: formData.payment_method === 'pix' ? 'awaiting_payment' : 'pending',
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
-      // Create order items
       const orderItems = cart.map(item => ({
         order_id: order.id,
         product_id: item.product.id,
@@ -232,17 +235,29 @@ export function CheckoutDialog({
 
       if (itemsError) throw itemsError;
 
-      setOrderNumber(newOrderNumber);
-
+      // If PIX payment, show PIX dialog
       if (formData.payment_method === 'pix' && business.pix_key) {
-        setShowPixCode(true);
+        setCreatedOrder({
+          id: order.id,
+          orderNumber: newOrderNumber,
+          total: calculateTotal(),
+          productNames: cart.map(item => item.product.name)
+        });
+        onOpenChange(false);
+        setShowPixPayment(true);
       } else {
+        // For cash/card, just complete
         toast({
           title: '🎉 Pedido realizado!',
-          description: `Número do pedido: ${newOrderNumber}`
+          description: `Pedido ${newOrderNumber} - ${
+            formData.payment_method === 'cash' ? 'Pagamento em dinheiro na entrega' :
+            formData.payment_method === 'debit' ? 'Pagamento no débito na entrega' :
+            'Pagamento no crédito na entrega'
+          }`
         });
         onSuccess();
         onOpenChange(false);
+        navigate('/meus-pedidos');
       }
     } catch (error) {
       console.error('Error creating order:', error);
@@ -256,297 +271,250 @@ export function CheckoutDialog({
     }
   };
 
-  const copyPixCode = () => {
-    const pixCode = generatePixCode(orderNumber);
-    if (pixCode) {
-      navigator.clipboard.writeText(pixCode);
-      setPixCopied(true);
-      setTimeout(() => setPixCopied(false), 3000);
-      toast({
-        title: 'Código PIX copiado!',
-        description: 'Cole em seu app de pagamento',
-        duration: 2000
-      });
-    }
-  };
-
-  const openWhatsApp = () => {
-    if (business.whatsapp) {
-      const message = encodeURIComponent(`Olá! Acabei de fazer o pedido ${orderNumber}. Vou enviar o comprovante do PIX.`);
-      window.open(`https://wa.me/55${business.whatsapp.replace(/\D/g, '')}?text=${message}`, '_blank');
-    }
-  };
-
-  const finishOrder = () => {
-    toast({
-      title: '🎉 Pedido realizado!',
-      description: `Número do pedido: ${orderNumber}`
-    });
+  const handlePixSuccess = () => {
     onSuccess();
-    onOpenChange(false);
-    setShowPixCode(false);
     navigate('/meus-pedidos');
   };
 
-  if (showPixCode) {
-    return (
+  return (
+    <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
-              <Wallet className="w-5 h-5" />
-              Pagamento PIX
-            </DialogTitle>
+            <DialogTitle>Finalizar Pedido</DialogTitle>
             <DialogDescription>
-              Copie o código abaixo e cole no seu aplicativo de pagamento
+              Preencha seus dados para enviar o pedido para {business.business_name}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <Card className="border-green-500/30 bg-green-500/5">
-              <CardContent className="p-4 space-y-3">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Valor a pagar</p>
-                  <p className="text-3xl font-bold text-green-600">
-                    R$ {calculateTotal().toFixed(2)}
-                  </p>
-                </div>
+          <div className="space-y-6">
+            {/* Contact */}
+            <div className="space-y-2">
+              <Label htmlFor="whatsapp" className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-green-600" />
+                WhatsApp para contato *
+              </Label>
+              <Input
+                id="whatsapp"
+                placeholder="(00) 00000-0000"
+                value={formData.whatsapp}
+                onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
+              />
+            </div>
 
-                <Separator />
-
-                <div className="bg-muted/50 p-3 rounded-lg font-mono text-sm break-all">
-                  <p><strong>Chave PIX:</strong> {business.pix_key}</p>
-                  <p><strong>Pedido:</strong> {orderNumber}</p>
-                  <p><strong>Cliente:</strong> {profile?.full_name}</p>
-                </div>
-
-                <Button 
-                  onClick={copyPixCode} 
-                  className="w-full gap-2"
-                  variant={pixCopied ? "secondary" : "default"}
+            {/* Delivery Options */}
+            {business.offers_delivery && (
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Truck className="w-4 h-4" />
+                  Tipo de pedido
+                </Label>
+                <RadioGroup
+                  value={formData.wants_delivery ? 'delivery' : 'pickup'}
+                  onValueChange={(value) => setFormData(prev => ({ 
+                    ...prev, 
+                    wants_delivery: value === 'delivery' 
+                  }))}
+                  className="flex gap-4"
                 >
-                  {pixCopied ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Copiado!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copiar código PIX
-                    </>
-                  )}
-                </Button>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="pickup" id="pickup" />
+                    <Label htmlFor="pickup" className="cursor-pointer">Retirar no local</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="delivery" id="delivery" />
+                    <Label htmlFor="delivery" className="cursor-pointer">Entrega</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
 
-                {business.whatsapp && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2 border-green-500 text-green-600 hover:bg-green-50"
-                    onClick={openWhatsApp}
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    Enviar comprovante via WhatsApp
-                  </Button>
+            {/* Delivery Address */}
+            {formData.wants_delivery && (
+              <div className="space-y-4">
+                {deliveryZones.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="neighborhood" className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      Bairro *
+                    </Label>
+                    <Select
+                      value={formData.neighborhood}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, neighborhood: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione seu bairro" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {deliveryZones.map((zone) => (
+                          <SelectItem key={zone.id} value={zone.neighborhood}>
+                            {zone.neighborhood} - R$ {zone.delivery_fee.toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
-              </CardContent>
-            </Card>
 
-            <p className="text-xs text-muted-foreground text-center">
-              Após efetuar o pagamento, aguarde a confirmação da empresa.
-            </p>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Endereço completo *</Label>
+                  <Textarea
+                    id="address"
+                    placeholder="Rua, número, complemento..."
+                    value={formData.address}
+                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Payment Method */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Wallet className="w-4 h-4" />
+                Forma de pagamento
+              </Label>
+              <RadioGroup
+                value={formData.payment_method}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, payment_method: value }))}
+                className="grid grid-cols-2 gap-2"
+              >
+                {availablePaymentMethods.pix && (
+                  <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
+                    <RadioGroupItem value="pix" id="pix" />
+                    <Label htmlFor="pix" className="cursor-pointer flex items-center gap-2 flex-1">
+                      <Wallet className="w-4 h-4 text-green-600" />
+                      PIX
+                    </Label>
+                  </div>
+                )}
+                {availablePaymentMethods.cash && (
+                  <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
+                    <RadioGroupItem value="cash" id="cash" />
+                    <Label htmlFor="cash" className="cursor-pointer flex items-center gap-2 flex-1">
+                      <Banknote className="w-4 h-4" />
+                      Dinheiro
+                    </Label>
+                  </div>
+                )}
+                {availablePaymentMethods.debit && (
+                  <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
+                    <RadioGroupItem value="debit" id="debit" />
+                    <Label htmlFor="debit" className="cursor-pointer flex items-center gap-2 flex-1">
+                      <CreditCard className="w-4 h-4" />
+                      Débito
+                    </Label>
+                  </div>
+                )}
+                {availablePaymentMethods.credit && (
+                  <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
+                    <RadioGroupItem value="credit" id="credit" />
+                    <Label htmlFor="credit" className="cursor-pointer flex items-center gap-2 flex-1">
+                      <CreditCard className="w-4 h-4" />
+                      Crédito
+                    </Label>
+                  </div>
+                )}
+              </RadioGroup>
+              
+              {formData.payment_method === 'pix' && (
+                <Alert className="border-green-200 bg-green-50">
+                  <Wallet className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 text-xs">
+                    Você receberá um QR Code PIX para pagamento imediato
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {['cash', 'debit', 'credit'].includes(formData.payment_method) && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Pagamento será realizado na {formData.wants_delivery ? 'entrega' : 'retirada'}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Observações (opcional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Alguma informação adicional para a loja..."
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                rows={2}
+              />
+            </div>
+
+            <Separator />
+
+            {/* Order Summary */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal ({cart.reduce((sum, i) => sum + i.quantity, 0)} itens)</span>
+                <span>R$ {calculateSubtotal().toFixed(2)}</span>
+              </div>
+              {formData.wants_delivery && (
+                <div className="flex justify-between text-sm">
+                  <span>Taxa de entrega</span>
+                  <span>R$ {calculateDeliveryFee().toFixed(2)}</span>
+                </div>
+              )}
+              <Separator />
+              <div className="flex justify-between font-bold text-lg">
+                <span>Total</span>
+                <span className="text-primary">R$ {calculateTotal().toFixed(2)}</span>
+              </div>
+            </div>
           </div>
 
-          <DialogFooter>
-            <Button onClick={finishOrder} className="w-full">
-              Finalizar
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={submitting}
+              className="w-full sm:w-auto gap-2"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processando...
+                </>
+              ) : formData.payment_method === 'pix' ? (
+                <>
+                  <Wallet className="w-4 h-4" />
+                  Pagar com PIX
+                </>
+              ) : (
+                'Confirmar Pedido'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    );
-  }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Finalizar Pedido</DialogTitle>
-          <DialogDescription>
-            Preencha seus dados para enviar o pedido para {business.business_name}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Contact */}
-          <div className="space-y-2">
-            <Label htmlFor="whatsapp" className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-green-600" />
-              WhatsApp para contato *
-            </Label>
-            <Input
-              id="whatsapp"
-              placeholder="(00) 00000-0000"
-              value={formData.whatsapp}
-              onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
-            />
-          </div>
-
-          {/* Delivery Options */}
-          {business.offers_delivery && (
-            <div className="space-y-3">
-              <Label className="flex items-center gap-2">
-                <Truck className="w-4 h-4" />
-                Tipo de pedido
-              </Label>
-              <RadioGroup
-                value={formData.wants_delivery ? 'delivery' : 'pickup'}
-                onValueChange={(value) => setFormData(prev => ({ 
-                  ...prev, 
-                  wants_delivery: value === 'delivery' 
-                }))}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="pickup" id="pickup" />
-                  <Label htmlFor="pickup" className="cursor-pointer">Retirar no local</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="delivery" id="delivery" />
-                  <Label htmlFor="delivery" className="cursor-pointer">Entrega</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          )}
-
-          {/* Delivery Address */}
-          {formData.wants_delivery && (
-            <div className="space-y-4">
-              {deliveryZones.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="neighborhood" className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    Bairro *
-                  </Label>
-                  <Select
-                    value={formData.neighborhood}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, neighborhood: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione seu bairro" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {deliveryZones.map((zone) => (
-                        <SelectItem key={zone.id} value={zone.neighborhood}>
-                          {zone.neighborhood} - R$ {zone.delivery_fee.toFixed(2)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Endereço completo *</Label>
-                <Textarea
-                  id="address"
-                  placeholder="Rua, número, complemento..."
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Payment Method */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <Wallet className="w-4 h-4" />
-              Forma de pagamento
-            </Label>
-            <RadioGroup
-              value={formData.payment_method}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, payment_method: value }))}
-              className="grid grid-cols-3 gap-2"
-            >
-              <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
-                <RadioGroupItem value="pix" id="pix" />
-                <Label htmlFor="pix" className="cursor-pointer flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-green-600" />
-                  PIX
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
-                <RadioGroupItem value="card" id="card" />
-                <Label htmlFor="card" className="cursor-pointer flex items-center gap-2">
-                  <CreditCard className="w-4 h-4" />
-                  Cartão
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 border rounded-lg p-3 cursor-pointer hover:bg-muted/50">
-                <RadioGroupItem value="cash" id="cash" />
-                <Label htmlFor="cash" className="cursor-pointer flex items-center gap-2">
-                  <Banknote className="w-4 h-4" />
-                  Dinheiro
-                </Label>
-              </div>
-            </RadioGroup>
-            
-            {formData.payment_method === 'pix' && !business.pix_key && (
-              <p className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
-                Esta empresa ainda não configurou o PIX. Selecione outro método.
-              </p>
-            )}
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Observações (opcional)</Label>
-            <Textarea
-              id="notes"
-              placeholder="Alguma observação sobre o pedido..."
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-            />
-          </div>
-
-          {/* Order Summary */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {cart.reduce((sum, item) => sum + item.quantity, 0)} itens
-                  </span>
-                  <span>R$ {calculateSubtotal().toFixed(2)}</span>
-                </div>
-                {calculateDeliveryFee() > 0 && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Taxa de entrega</span>
-                    <span>R$ {calculateDeliveryFee().toFixed(2)}</span>
-                  </div>
-                )}
-                <Separator className="my-2" />
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total</span>
-                  <span className="text-primary">R$ {calculateTotal().toFixed(2)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Voltar
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={submitting || (formData.payment_method === 'pix' && !business.pix_key)}
-          >
-            {submitting ? 'Enviando...' : 'Confirmar Pedido'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {/* PIX Payment Dialog */}
+      {createdOrder && (
+        <PixPaymentDialog
+          open={showPixPayment}
+          onOpenChange={setShowPixPayment}
+          orderId={createdOrder.id}
+          orderNumber={createdOrder.orderNumber}
+          total={createdOrder.total}
+          pixKey={business.pix_key!}
+          pixKeyType={(business.pix_key_type || 'cpf') as any}
+          holderName={business.pix_holder_name || business.business_name}
+          businessName={business.business_name}
+          businessWhatsapp={business.whatsapp || undefined}
+          customerName={profile?.full_name || 'Cliente'}
+          productNames={createdOrder.productNames}
+          onSuccess={handlePixSuccess}
+        />
+      )}
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Home, Search, PlusSquare, MessageCircle, User } from 'lucide-react';
+import { Home, Store, PlusSquare, ShoppingBag, User } from 'lucide-react';
 import { CreatePostDialog } from '@/components/feed/CreatePostDialog';
 
 export function MobileNav() {
@@ -12,9 +12,9 @@ export function MobileNav() {
 
   const navItems = [
     { icon: Home, path: '/feed', label: 'Feed' },
-    { icon: Search, path: '/explore', label: 'Explorar' },
+    { icon: Store, path: '/empresas', label: 'Comércio' },
     { icon: PlusSquare, path: 'create', label: 'Criar', isAction: true },
-    { icon: MessageCircle, path: '/messages', label: 'Chat' },
+    { icon: ShoppingBag, path: '/meus-pedidos', label: 'Pedidos' },
     { icon: User, path: `/profile/${profile?.username}`, label: 'Perfil' },
   ];
 
