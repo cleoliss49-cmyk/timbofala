@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -13,14 +13,45 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { Camera, Loader2, Facebook, Instagram, Twitter, ImagePlus } from 'lucide-react';
+import { Camera, Loader2, Facebook, Instagram, Twitter, ImagePlus, Eye, EyeOff } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { CalendarIcon } from 'lucide-react';
 
 interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: () => void;
 }
+
+const relationshipOptions = [
+  { value: 'single', label: 'Solteiro(a)' },
+  { value: 'married', label: 'Casado(a)' },
+  { value: 'dating', label: 'Namorando' },
+  { value: 'widowed', label: 'Viúvo(a)' },
+  { value: 'complicated', label: 'Em relacionamento complicado' },
+  { value: 'prefer_not_to_say', label: 'Prefiro não informar' },
+];
+
+const genderOptions = [
+  { value: 'male', label: 'Masculino' },
+  { value: 'female', label: 'Feminino' },
+  { value: 'non_binary', label: 'Não-binário' },
+  { value: 'other', label: 'Outro' },
+  { value: 'prefer_not_to_say', label: 'Prefiro não informar' },
+];
 
 export function EditProfileDialog({
   open,
@@ -32,15 +63,26 @@ export function EditProfileDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
-    full_name: profile?.full_name || '',
-    bio: profile?.bio || '',
-    neighborhood: profile?.neighborhood || '',
-    city: profile?.city || '',
-    facebook_url: profile?.facebook_url || '',
-    instagram_url: profile?.instagram_url || '',
-    twitter_url: profile?.twitter_url || '',
-    tiktok_url: profile?.tiktok_url || '',
-    kwai_url: profile?.kwai_url || '',
+    full_name: '',
+    bio: '',
+    neighborhood: '',
+    city: '',
+    facebook_url: '',
+    instagram_url: '',
+    twitter_url: '',
+    tiktok_url: '',
+    kwai_url: '',
+    relationship_status: '',
+    birth_date: null as Date | null,
+    gender: '',
+    languages: '',
+    education: '',
+    profession: '',
+    show_relationship_status: true,
+    show_birth_date: true,
+    show_languages: true,
+    show_education: true,
+    show_profession: true,
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -48,6 +90,37 @@ export function EditProfileDialog({
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (profile && open) {
+      setFormData({
+        full_name: profile.full_name || '',
+        bio: profile.bio || '',
+        neighborhood: profile.neighborhood || '',
+        city: profile.city || '',
+        facebook_url: profile.facebook_url || '',
+        instagram_url: profile.instagram_url || '',
+        twitter_url: profile.twitter_url || '',
+        tiktok_url: profile.tiktok_url || '',
+        kwai_url: profile.kwai_url || '',
+        relationship_status: profile.relationship_status || '',
+        birth_date: profile.birth_date ? new Date(profile.birth_date) : null,
+        gender: profile.gender || '',
+        languages: profile.languages?.join(', ') || '',
+        education: profile.education || '',
+        profession: profile.profession || '',
+        show_relationship_status: profile.show_relationship_status !== false,
+        show_birth_date: profile.show_birth_date !== false,
+        show_languages: profile.show_languages !== false,
+        show_education: profile.show_education !== false,
+        show_profession: profile.show_profession !== false,
+      });
+      setAvatarPreview(null);
+      setCoverPreview(null);
+      setAvatarFile(null);
+      setCoverFile(null);
+    }
+  }, [profile, open]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -117,6 +190,10 @@ export function EditProfileDialog({
         coverUrl = publicUrl;
       }
 
+      const languagesArray = formData.languages
+        ? formData.languages.split(',').map(l => l.trim()).filter(Boolean)
+        : null;
+
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -131,6 +208,17 @@ export function EditProfileDialog({
           twitter_url: formData.twitter_url || null,
           tiktok_url: formData.tiktok_url || null,
           kwai_url: formData.kwai_url || null,
+          relationship_status: formData.relationship_status || null,
+          birth_date: formData.birth_date ? format(formData.birth_date, 'yyyy-MM-dd') : null,
+          gender: formData.gender || null,
+          languages: languagesArray,
+          education: formData.education || null,
+          profession: formData.profession || null,
+          show_relationship_status: formData.show_relationship_status,
+          show_birth_date: formData.show_birth_date,
+          show_languages: formData.show_languages,
+          show_education: formData.show_education,
+          show_profession: formData.show_profession,
         })
         .eq('id', user.id);
 
@@ -259,8 +347,190 @@ export function EditProfileDialog({
               </div>
             </div>
 
+            {/* Personal Details Section */}
+            <div className="space-y-4 pt-4 border-t border-border">
+              <Label className="text-base font-medium">Informações Pessoais</Label>
+              
+              {/* Gender */}
+              <div>
+                <Label htmlFor="gender">Gênero</Label>
+                <Select
+                  value={formData.gender}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione seu gênero" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {genderOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Relationship Status with visibility toggle */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Status de relacionamento</Label>
+                  <div className="flex items-center gap-2">
+                    {formData.show_relationship_status ? (
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <Switch
+                      checked={formData.show_relationship_status}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_relationship_status: checked }))}
+                    />
+                  </div>
+                </div>
+                <Select
+                  value={formData.relationship_status}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, relationship_status: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione seu status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {relationshipOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Birth Date with visibility toggle */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Data de nascimento</Label>
+                  <div className="flex items-center gap-2">
+                    {formData.show_birth_date ? (
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <Switch
+                      checked={formData.show_birth_date}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_birth_date: checked }))}
+                    />
+                  </div>
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.birth_date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.birth_date ? (
+                        format(formData.birth_date, "d 'de' MMMM 'de' yyyy", { locale: ptBR })
+                      ) : (
+                        <span>Selecione uma data</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.birth_date || undefined}
+                      onSelect={(date) => setFormData(prev => ({ ...prev, birth_date: date || null }))}
+                      disabled={(date) =>
+                        date > new Date() || date < new Date("1900-01-01")
+                      }
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                      captionLayout="dropdown-buttons"
+                      fromYear={1900}
+                      toYear={new Date().getFullYear()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Languages with visibility toggle */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="languages">Idiomas falados</Label>
+                  <div className="flex items-center gap-2">
+                    {formData.show_languages ? (
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <Switch
+                      checked={formData.show_languages}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_languages: checked }))}
+                    />
+                  </div>
+                </div>
+                <Input
+                  id="languages"
+                  value={formData.languages}
+                  onChange={(e) => setFormData(prev => ({ ...prev, languages: e.target.value }))}
+                  placeholder="Português, Inglês, Espanhol..."
+                />
+                <p className="text-xs text-muted-foreground">Separe os idiomas por vírgula</p>
+              </div>
+
+              {/* Education with visibility toggle */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="education">Escolaridade / Formação</Label>
+                  <div className="flex items-center gap-2">
+                    {formData.show_education ? (
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <Switch
+                      checked={formData.show_education}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_education: checked }))}
+                    />
+                  </div>
+                </div>
+                <Input
+                  id="education"
+                  value={formData.education}
+                  onChange={(e) => setFormData(prev => ({ ...prev, education: e.target.value }))}
+                  placeholder="Ex: Ensino Superior em Administração"
+                />
+              </div>
+
+              {/* Profession with visibility toggle */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="profession">Profissão / Ocupação</Label>
+                  <div className="flex items-center gap-2">
+                    {formData.show_profession ? (
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <Switch
+                      checked={formData.show_profession}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, show_profession: checked }))}
+                    />
+                  </div>
+                </div>
+                <Input
+                  id="profession"
+                  value={formData.profession}
+                  onChange={(e) => setFormData(prev => ({ ...prev, profession: e.target.value }))}
+                  placeholder="Ex: Desenvolvedor de Software"
+                />
+              </div>
+            </div>
+
             {/* Social Media Links */}
-            <div className="space-y-3 pt-2">
+            <div className="space-y-3 pt-4 border-t border-border">
               <Label className="text-base font-medium">Redes Sociais</Label>
               
               <div className="space-y-3">
