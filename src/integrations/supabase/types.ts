@@ -1036,6 +1036,44 @@ export type Database = {
           },
         ]
       }
+      order_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_from_business: boolean
+          order_id: string
+          read_at: string | null
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_from_business?: boolean
+          order_id: string
+          read_at?: string | null
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_from_business?: boolean
+          order_id?: string
+          read_at?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_messages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "business_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paquera_likes: {
         Row: {
           created_at: string
