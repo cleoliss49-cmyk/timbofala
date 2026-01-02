@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Star, Send, MessageCircle } from 'lucide-react';
+import { Star, Send, MessageCircle, CheckCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -38,6 +38,7 @@ export function BusinessReviews({ businessId, businessOwnerId }: BusinessReviews
   const [submitting, setSubmitting] = useState(false);
   const [existingReview, setExistingReview] = useState<Review | null>(null);
   const [hoveredStar, setHoveredStar] = useState(0);
+  const [showThankYou, setShowThankYou] = useState(false);
 
   useEffect(() => {
     fetchReviews();
@@ -134,7 +135,6 @@ export function BusinessReviews({ businessId, businessOwnerId }: BusinessReviews
           .eq('id', existingReview.id);
 
         if (error) throw error;
-        toast({ title: 'Avaliação atualizada!' });
       } else {
         const { error } = await supabase
           .from('business_reviews')
@@ -146,8 +146,11 @@ export function BusinessReviews({ businessId, businessOwnerId }: BusinessReviews
           });
 
         if (error) throw error;
-        toast({ title: 'Avaliação enviada!' });
       }
+
+      // Show thank you message
+      setShowThankYou(true);
+      setTimeout(() => setShowThankYou(false), 5000);
 
       await fetchReviews();
       await checkExistingReview();
@@ -194,8 +197,25 @@ export function BusinessReviews({ businessId, businessOwnerId }: BusinessReviews
         )}
       </div>
 
+      {/* Thank You Message */}
+      {showThankYou && (
+        <Card className="border-green-500/50 bg-green-500/10">
+          <CardContent className="p-4 flex items-center gap-3">
+            <CheckCircle className="w-6 h-6 text-green-500" />
+            <div>
+              <p className="font-semibold text-green-700 dark:text-green-400">
+                Obrigado por sua avaliação!
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Sua opinião é muito importante para nós.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Write Review */}
-      {user && businessOwnerId !== user.id && (
+      {user && businessOwnerId !== user.id && !showThankYou && (
         <Card>
           <CardContent className="p-4 space-y-4">
             <h3 className="font-medium">
