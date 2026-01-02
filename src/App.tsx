@@ -23,6 +23,10 @@ import Paquera from "./pages/Paquera";
 import AdminAuth from "./pages/AdminAuth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import Businesses from "./pages/Businesses";
+import Business from "./pages/Business";
+import BusinessSetup from "./pages/BusinessSetup";
+import BusinessManage from "./pages/BusinessManage";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +55,10 @@ const App = () => (
             <Route path="/saved" element={<Saved />} />
             <Route path="/post/:postId" element={<Post />} />
             <Route path="/paquera" element={<Paquera />} />
+            <Route path="/empresas" element={<Businesses />} />
+            <Route path="/empresa/criar" element={<BusinessSetup />} />
+            <Route path="/empresa/gerenciar" element={<BusinessManage />} />
+            <Route path="/empresa/:slug" element={<Business />} />
             <Route path="/admtbo" element={<AdminAuth />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
