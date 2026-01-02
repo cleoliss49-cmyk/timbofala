@@ -465,6 +465,135 @@ export type Database = {
           },
         ]
       }
+      paquera_likes: {
+        Row: {
+          created_at: string
+          id: string
+          liked_id: string
+          liker_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          liked_id: string
+          liker_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          liked_id?: string
+          liker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paquera_likes_liked_id_fkey"
+            columns: ["liked_id"]
+            isOneToOne: false
+            referencedRelation: "paquera_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paquera_likes_liker_id_fkey"
+            columns: ["liker_id"]
+            isOneToOne: false
+            referencedRelation: "paquera_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paquera_matches: {
+        Row: {
+          created_at: string
+          id: string
+          user1_id: string
+          user2_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user1_id: string
+          user2_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user1_id?: string
+          user2_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paquera_matches_user1_id_fkey"
+            columns: ["user1_id"]
+            isOneToOne: false
+            referencedRelation: "paquera_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paquera_matches_user2_id_fkey"
+            columns: ["user2_id"]
+            isOneToOne: false
+            referencedRelation: "paquera_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      paquera_profiles: {
+        Row: {
+          accepted_terms: boolean | null
+          accepted_terms_at: string | null
+          age_range_max: number | null
+          age_range_min: number | null
+          bio: string | null
+          city: string
+          created_at: string
+          gender: string
+          hobbies: string[] | null
+          id: string
+          is_active: boolean | null
+          looking_for_gender: string
+          photo_url: string
+          sexual_orientation: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted_terms?: boolean | null
+          accepted_terms_at?: string | null
+          age_range_max?: number | null
+          age_range_min?: number | null
+          bio?: string | null
+          city: string
+          created_at?: string
+          gender: string
+          hobbies?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          looking_for_gender: string
+          photo_url: string
+          sexual_orientation: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accepted_terms?: boolean | null
+          accepted_terms_at?: string | null
+          age_range_max?: number | null
+          age_range_min?: number | null
+          bio?: string | null
+          city?: string
+          created_at?: string
+          gender?: string
+          hobbies?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          looking_for_gender?: string
+          photo_url?: string
+          sexual_orientation?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pinned_post_impressions: {
         Row: {
           id: string
@@ -846,16 +975,27 @@ export type Database = {
           accepted_terms_at: string | null
           avatar_url: string | null
           bio: string | null
+          birth_date: string | null
           city: string
           cover_url: string | null
           created_at: string
+          education: string | null
           facebook_url: string | null
           full_name: string
           gender: string | null
           id: string
           instagram_url: string | null
           kwai_url: string | null
+          languages: string[] | null
           neighborhood: string
+          profession: string | null
+          relationship_status: string | null
+          sexual_orientation: string | null
+          show_birth_date: boolean | null
+          show_education: boolean | null
+          show_languages: boolean | null
+          show_profession: boolean | null
+          show_relationship_status: boolean | null
           tiktok_url: string | null
           twitter_url: string | null
           updated_at: string
@@ -866,16 +1006,27 @@ export type Database = {
           accepted_terms_at?: string | null
           avatar_url?: string | null
           bio?: string | null
+          birth_date?: string | null
           city?: string
           cover_url?: string | null
           created_at?: string
+          education?: string | null
           facebook_url?: string | null
           full_name: string
           gender?: string | null
           id: string
           instagram_url?: string | null
           kwai_url?: string | null
+          languages?: string[] | null
           neighborhood: string
+          profession?: string | null
+          relationship_status?: string | null
+          sexual_orientation?: string | null
+          show_birth_date?: boolean | null
+          show_education?: boolean | null
+          show_languages?: boolean | null
+          show_profession?: boolean | null
+          show_relationship_status?: boolean | null
           tiktok_url?: string | null
           twitter_url?: string | null
           updated_at?: string
@@ -886,16 +1037,27 @@ export type Database = {
           accepted_terms_at?: string | null
           avatar_url?: string | null
           bio?: string | null
+          birth_date?: string | null
           city?: string
           cover_url?: string | null
           created_at?: string
+          education?: string | null
           facebook_url?: string | null
           full_name?: string
           gender?: string | null
           id?: string
           instagram_url?: string | null
           kwai_url?: string | null
+          languages?: string[] | null
           neighborhood?: string
+          profession?: string | null
+          relationship_status?: string | null
+          sexual_orientation?: string | null
+          show_birth_date?: boolean | null
+          show_education?: boolean | null
+          show_languages?: boolean | null
+          show_profession?: boolean | null
+          show_relationship_status?: boolean | null
           tiktok_url?: string | null
           twitter_url?: string | null
           updated_at?: string

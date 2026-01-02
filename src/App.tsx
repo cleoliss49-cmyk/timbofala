@@ -19,6 +19,7 @@ import Privacy from "./pages/Privacy";
 import Notifications from "./pages/Notifications";
 import Saved from "./pages/Saved";
 import Post from "./pages/Post";
+import Paquera from "./pages/Paquera";
 import AdminAuth from "./pages/AdminAuth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/saved" element={<Saved />} />
             <Route path="/post/:postId" element={<Post />} />
+            <Route path="/paquera" element={<Paquera />} />
             <Route path="/admtbo" element={<AdminAuth />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
