@@ -140,15 +140,12 @@ export default function Paquera() {
   };
 
   const fetchProfiles = async (myProfile: PaqueraProfile) => {
+    // Fetch ALL active profiles except the current user
     let query = supabase
       .from('paquera_profiles')
       .select('*')
       .neq('user_id', user?.id)
       .eq('is_active', true);
-
-    if (myProfile.looking_for_gender !== 'other') {
-      query = query.eq('gender', myProfile.looking_for_gender);
-    }
 
     if (filterMode === 'new') {
       const sevenDaysAgo = new Date();
@@ -164,9 +161,21 @@ export default function Paquera() {
     }
 
     if (data && data.length > 0) {
-      const compatibleProfiles = data.filter(p => 
-        p.looking_for_gender === 'other' || p.looking_for_gender === myProfile.gender
-      );
+      // Filter compatible profiles based on mutual preferences
+      const compatibleProfiles = data.filter(p => {
+        // Check if I'm interested in their gender (or I'm open to all)
+        const iAmInterestedInThem = 
+          myProfile.looking_for_gender === 'other' || 
+          myProfile.looking_for_gender === p.gender;
+        
+        // Check if they're interested in my gender (or they're open to all)
+        const theyAreInterestedInMe = 
+          p.looking_for_gender === 'other' || 
+          p.looking_for_gender === myProfile.gender;
+        
+        // Both conditions must be true for compatibility
+        return iAmInterestedInThem && theyAreInterestedInMe;
+      });
 
       const userIds = compatibleProfiles.map(p => p.user_id);
       
