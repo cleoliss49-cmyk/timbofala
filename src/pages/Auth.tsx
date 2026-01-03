@@ -8,6 +8,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { MessageCircle, Users, Heart, Sparkles } from 'lucide-react';
 import { z } from 'zod';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { TIMBO_NEIGHBORHOODS } from '@/lib/neighborhoods';
 
 const signUpSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -236,14 +244,24 @@ export default function Auth() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="neighborhood">Bairro</Label>
-                      <Input
-                        id="neighborhood"
-                        name="neighborhood"
+                      <Select
                         value={formData.neighborhood}
-                        onChange={handleChange}
-                        placeholder="Seu bairro"
-                        className={errors.neighborhood ? 'border-destructive' : ''}
-                      />
+                        onValueChange={(value) => {
+                          setFormData(prev => ({ ...prev, neighborhood: value }));
+                          setErrors(prev => ({ ...prev, neighborhood: '' }));
+                        }}
+                      >
+                        <SelectTrigger className={errors.neighborhood ? 'border-destructive' : ''}>
+                          <SelectValue placeholder="Selecione seu bairro" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIMBO_NEIGHBORHOODS.map((neighborhood) => (
+                            <SelectItem key={neighborhood} value={neighborhood}>
+                              {neighborhood}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       {errors.neighborhood && (
                         <p className="text-sm text-destructive mt-1">{errors.neighborhood}</p>
                       )}
@@ -257,6 +275,7 @@ export default function Auth() {
                         onChange={handleChange}
                         placeholder="Sua cidade"
                         className={errors.city ? 'border-destructive' : ''}
+                        disabled
                       />
                       {errors.city && (
                         <p className="text-sm text-destructive mt-1">{errors.city}</p>

@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TIMBO_NEIGHBORHOODS } from '@/lib/neighborhoods';
 
 const CATEGORIES = [
   { value: 'alimentacao', label: 'Alimentação' },
@@ -458,11 +459,21 @@ export default function BusinessSetup() {
                 </div>
                 <div>
                   <Label htmlFor="neighborhood">Bairro</Label>
-                  <Input
-                    id="neighborhood"
+                  <Select
                     value={formData.neighborhood}
-                    onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
-                  />
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, neighborhood: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o bairro" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIMBO_NEIGHBORHOODS.map((neighborhood) => (
+                        <SelectItem key={neighborhood} value={neighborhood}>
+                          {neighborhood}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
