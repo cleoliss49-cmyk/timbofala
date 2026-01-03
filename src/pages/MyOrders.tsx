@@ -114,9 +114,13 @@ export default function MyOrders() {
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
-    } else if (user) {
+      return;
+    }
+
+    if (user) {
       fetchOrders();
-      setupRealtimeSubscription();
+      const cleanup = setupRealtimeSubscription();
+      return cleanup;
     }
   }, [user, authLoading]);
 

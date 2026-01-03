@@ -105,23 +105,33 @@ export function CheckoutDialog({
   });
 
   // Determine available payment methods based on products
+  // Regras: PIX pode ser online; dinheiro/débito/crédito são apenas para retirada/no local.
   const availablePaymentMethods = {
-    pix: cart.every(item => item.product.accepts_pix !== false) && business.pix_key,
-    cash: cart.every(item => item.product.accepts_cash !== false),
-    debit: cart.every(item => item.product.accepts_debit !== false),
-    credit: cart.every(item => item.product.accepts_credit !== false)
+    pix: cart.every(item => item.product.accepts_pix !== false) && !!business.pix_key,
+    cash: !formData.wants_delivery && cart.every(item => item.product.accepts_cash !== false),
+    debit: !formData.wants_delivery && cart.every(item => item.product.accepts_debit !== false),
+    credit: !formData.wants_delivery && cart.every(item => item.product.accepts_credit !== false)
   };
 
   useEffect(() => {
     if (open && business) {
       fetchDeliveryZones();
-      // Set default payment method to first available
+
+      // Se virou delivery, força PIX (pagamento online)
+      if (formData.wants_delivery) {
+        if (availablePaymentMethods.pix && formData.payment_method !== 'pix') {
+          setFormData(prev => ({ ...prev, payment_method: 'pix' }));
+        }
+        return;
+      }
+
+      // Retirada/no local: escolhe o primeiro disponível
       if (availablePaymentMethods.cash) setFormData(prev => ({ ...prev, payment_method: 'cash' }));
       else if (availablePaymentMethods.pix) setFormData(prev => ({ ...prev, payment_method: 'pix' }));
       else if (availablePaymentMethods.debit) setFormData(prev => ({ ...prev, payment_method: 'debit' }));
       else if (availablePaymentMethods.credit) setFormData(prev => ({ ...prev, payment_method: 'credit' }));
     }
-  }, [open, business]);
+  }, [open, business, formData.wants_delivery]);
 
   const fetchDeliveryZones = async () => {
     const { data, error } = await supabase
@@ -430,7 +440,7 @@ export function CheckoutDialog({
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    Pagamento será realizado na {formData.wants_delivery ? 'entrega' : 'retirada'}
+                    Dinheiro, débito e crédito são pagos <strong>apenas na retirada/no local</strong>.
                   </AlertDescription>
                 </Alert>
               )}
