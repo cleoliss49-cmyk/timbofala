@@ -109,6 +109,7 @@ interface Stats {
   totalBusinesses: number;
   totalOrdersThisMonth: number;
   totalSalesThisMonth: number;
+  totalCommissionToReceive: number;
 }
 
 const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
@@ -137,7 +138,8 @@ export default function AdminCommissions() {
     totalPaid: 0,
     totalBusinesses: 0,
     totalOrdersThisMonth: 0,
-    totalSalesThisMonth: 0
+    totalSalesThisMonth: 0,
+    totalCommissionToReceive: 0
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
@@ -261,13 +263,17 @@ export default function AdminCommissions() {
 
       const deliveredThisMonth = (thisMonthOrders || []).filter(o => o.status === 'delivered');
 
+      const totalPendingAmount = pendingCommissions.reduce((acc, c) => acc + c.commission_amount, 0);
+      const totalAwaitingAmount = awaitingCommissions.reduce((acc, c) => acc + c.commission_amount, 0);
+      
       setStats({
-        totalPending: pendingCommissions.reduce((acc, c) => acc + c.commission_amount, 0),
-        totalAwaitingConfirmation: awaitingCommissions.reduce((acc, c) => acc + c.commission_amount, 0),
+        totalPending: totalPendingAmount,
+        totalAwaitingConfirmation: totalAwaitingAmount,
         totalPaid: paidCommissions.reduce((acc, c) => acc + c.commission_amount, 0),
         totalBusinesses: businessesWithStats.length,
         totalOrdersThisMonth: (thisMonthOrders || []).length,
-        totalSalesThisMonth: deliveredThisMonth.reduce((acc, o) => acc + (o.total || 0), 0)
+        totalSalesThisMonth: deliveredThisMonth.reduce((acc, o) => acc + (o.total || 0), 0),
+        totalCommissionToReceive: totalPendingAmount + totalAwaitingAmount
       });
 
     } catch (error) {
@@ -436,6 +442,42 @@ export default function AdminCommissions() {
             Voltar ao Painel
           </Button>
         </div>
+
+        {/* Total Commission to Receive - Highlight Card */}
+        <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-primary/30">
+          <CardContent className="py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-4 rounded-full bg-primary/20">
+                  <DollarSign className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total a Receber em Comissões</p>
+                  <p className="text-4xl font-bold text-primary">
+                    R$ {stats.totalCommissionToReceive.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    7% de todas as vendas concluídas (pendentes + aguardando confirmação)
+                  </p>
+                </div>
+              </div>
+              <div className="hidden md:flex gap-6">
+                <div className="text-center px-4 border-l">
+                  <p className="text-xs text-muted-foreground">Pendentes</p>
+                  <p className="text-xl font-bold text-yellow-600">R$ {stats.totalPending.toFixed(2)}</p>
+                </div>
+                <div className="text-center px-4 border-l">
+                  <p className="text-xs text-muted-foreground">Aguardando</p>
+                  <p className="text-xl font-bold text-blue-600">R$ {stats.totalAwaitingConfirmation.toFixed(2)}</p>
+                </div>
+                <div className="text-center px-4 border-l">
+                  <p className="text-xs text-muted-foreground">Já Recebido</p>
+                  <p className="text-xl font-bold text-green-600">R$ {stats.totalPaid.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
