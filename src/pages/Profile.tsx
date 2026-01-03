@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Calendar, Settings, MessageCircle, UserPlus, UserMinus, Facebook, Instagram, Twitter, Camera, ImagePlus, Info } from 'lucide-react';
+import { MapPin, Calendar, Settings, MessageCircle, UserPlus, UserMinus, Facebook, Instagram, Twitter, Camera, ImagePlus, Info, Video, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { EditProfileDialog } from '@/components/dialogs/EditProfileDialog';
 import { FollowersDialog } from '@/components/dialogs/FollowersDialog';
 import { ProfileDetailsDialog } from '@/components/dialogs/ProfileDetailsDialog';
+import { CreateStoryDialog } from '@/components/stories/CreateStoryDialog';
+import { StoryMetricsDialog } from '@/components/stories/StoryMetricsDialog';
+import { StoriesBar } from '@/components/stories/StoriesBar';
 
 interface ProfileData {
   id: string;
@@ -59,7 +62,12 @@ export default function Profile() {
   const [showFollowersDialog, setShowFollowersDialog] = useState(false);
   const [followersTab, setFollowersTab] = useState<'followers' | 'following'>('followers');
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showCreateStory, setShowCreateStory] = useState(false);
+  const [showStoryMetrics, setShowStoryMetrics] = useState(false);
+  const [adminStories, setAdminStories] = useState<any[]>([]);
   const isOwnProfile = currentUserProfile?.username === username;
+  const isAdminProfile = username === 'admin';
+  const isCurrentUserAdmin = currentUserProfile?.username === 'admin';
 
   const fetchProfile = async () => {
     if (!username) return;
@@ -134,6 +142,41 @@ export default function Profile() {
     fetchProfile();
   }, [username, user]);
 
+  // Fetch admin stories for metrics
+  const fetchAdminStories = async () => {
+    if (!isCurrentUserAdmin) return;
+    
+    const { data } = await supabase
+      .from('stories')
+      .select('*')
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: false });
+    
+    setAdminStories(data || []);
+  };
+
+  useEffect(() => {
+    if (isCurrentUserAdmin && isOwnProfile) {
+      fetchAdminStories();
+    }
+  }, [isCurrentUserAdmin, isOwnProfile, user]);
+
+  const handleDeleteStory = async (storyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('stories')
+        .delete()
+        .eq('id', storyId);
+      
+      if (error) throw error;
+      
+      toast({ title: 'Story excluído!' });
+      fetchAdminStories();
+    } catch (error) {
+      toast({ title: 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
   const handleFollow = async () => {
     if (!user || !profileData) return;
 
@@ -191,6 +234,28 @@ export default function Profile() {
   return (
     <MainLayout>
       <div className="max-w-2xl mx-auto">
+        {/* Stories bar for admin profile */}
+        {isAdminProfile && (
+          <StoriesBar 
+            onCreateStory={isCurrentUserAdmin ? () => setShowCreateStory(true) : undefined}
+            isAdmin={isCurrentUserAdmin && isOwnProfile}
+          />
+        )}
+
+        {/* Admin story controls */}
+        {isCurrentUserAdmin && isOwnProfile && (
+          <div className="flex gap-2 mb-4">
+            <Button onClick={() => setShowCreateStory(true)} className="flex-1">
+              <Video className="w-4 h-4 mr-2" />
+              Publicar Story Premium
+            </Button>
+            <Button variant="outline" onClick={() => setShowStoryMetrics(true)}>
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Métricas
+            </Button>
+          </div>
+        )}
+
         {/* Cover & Avatar */}
         <div className="relative mb-16">
           <div 
@@ -417,6 +482,30 @@ export default function Profile() {
         open={showDetailsDialog}
         onOpenChange={setShowDetailsDialog}
         profile={profileData}
+      />
+
+      {/* Story dialogs for admin */}
+      {isCurrentUserAdmin && (
+        <>
+          <CreateStoryDialog
+            open={showCreateStory}
+            onOpenChange={setShowCreateStory}
+            onStoryCreated={fetchAdminStories}
+          />
+          <StoryMetricsDialog
+            open={showStoryMetrics}
+            onOpenChange={setShowStoryMetrics}
+            stories={adminStories}
+            onDeleteStory={handleDeleteStory}
+          />
+        </>
+      )}
+
+      <FollowersDialog
+        open={showFollowersDialog}
+        onOpenChange={setShowFollowersDialog}
+        userId={profileData?.id || ''}
+        initialTab={followersTab}
       />
     </MainLayout>
   );

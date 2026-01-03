@@ -2331,30 +2331,39 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string
+          duration_hours: number
           expires_at: string
           id: string
           media_type: string
           media_url: string
+          target_audience: string
+          title: string | null
           user_id: string
           views_count: number
         }
         Insert: {
           caption?: string | null
           created_at?: string
+          duration_hours?: number
           expires_at?: string
           id?: string
           media_type?: string
           media_url: string
+          target_audience?: string
+          title?: string | null
           user_id: string
           views_count?: number
         }
         Update: {
           caption?: string | null
           created_at?: string
+          duration_hours?: number
           expires_at?: string
           id?: string
           media_type?: string
           media_url?: string
+          target_audience?: string
+          title?: string | null
           user_id?: string
           views_count?: number
         }
