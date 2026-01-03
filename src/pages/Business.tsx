@@ -535,9 +535,25 @@ export default function Business() {
                     )}
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{item.product.name}</h4>
-                      <p className="text-sm text-primary font-semibold">
-                        R$ {(getProductPrice(item.product) * item.quantity).toFixed(2)}
-                      </p>
+                      <div className="text-sm">
+                        {item.product.promotional_price && item.product.promotional_price < item.product.price ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-primary font-semibold">
+                              R$ {getProductPrice(item.product).toFixed(2)} × {item.quantity}
+                            </span>
+                            <span className="text-xs text-muted-foreground line-through">
+                              R$ {item.product.price.toFixed(2)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-primary font-semibold">
+                            R$ {getProductPrice(item.product).toFixed(2)} × {item.quantity}
+                          </span>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          = R$ {(getProductPrice(item.product) * item.quantity).toFixed(2)}
+                        </p>
+                      </div>
                       
                       <div className="flex items-center gap-2 mt-2">
                         <Button 

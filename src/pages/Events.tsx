@@ -343,7 +343,9 @@ export default function Events() {
                         type="datetime-local"
                         value={formData.event_date}
                         onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
+                        min={new Date().toISOString().slice(0, 16)}
                         required
+                        className="w-full"
                       />
                     </div>
                     <div>
@@ -352,6 +354,8 @@ export default function Events() {
                         type="datetime-local"
                         value={formData.end_date}
                         onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        min={formData.event_date || new Date().toISOString().slice(0, 16)}
+                        className="w-full"
                       />
                     </div>
                   </div>
@@ -428,7 +432,14 @@ export default function Events() {
                     )}
                   </div>
                   <Button type="submit" disabled={submitting} className="w-full gradient-primary text-white">
-                    {submitting ? 'Criando...' : 'Criar Evento'}
+                    {submitting ? (
+                      <>
+                        <span className="animate-spin mr-2">⏳</span>
+                        Criando...
+                      </>
+                    ) : (
+                      'Criar Evento'
+                    )}
                   </Button>
                 </form>
               </DialogContent>

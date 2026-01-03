@@ -253,10 +253,10 @@ export function PaqueraSetupDialog({
                 value={formData.looking_for_gender}
                 onValueChange={(v) => setFormData(prev => ({ ...prev, looking_for_gender: v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="relative z-50">
                   <SelectValue placeholder="Gênero que procura" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[100]" position="popper" sideOffset={4}>
                   <SelectItem value="male">Homens</SelectItem>
                   <SelectItem value="female">Mulheres</SelectItem>
                   <SelectItem value="other">Todos</SelectItem>

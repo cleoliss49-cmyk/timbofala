@@ -108,34 +108,51 @@ export function CheckoutDialog({
     wants_delivery: false
   });
 
-  // Determine available payment methods based on products
-  // Regras: PIX pode ser online; dinheiro/débito/crédito são apenas para retirada/no local.
-  const availablePaymentMethods = {
-    pix: cart.every(item => item.product.accepts_pix !== false) && !!business.pix_key,
-    cash: !formData.wants_delivery && cart.every(item => item.product.accepts_cash !== false),
-    debit: !formData.wants_delivery && cart.every(item => item.product.accepts_debit !== false),
-    credit: !formData.wants_delivery && cart.every(item => item.product.accepts_credit !== false)
+  // Determine available payment methods based on products and delivery option
+  const getAvailablePaymentMethods = () => {
+    const hasPix = cart.every(item => item.product.accepts_pix !== false) && !!business.pix_key;
+    const hasCash = !formData.wants_delivery && cart.every(item => item.product.accepts_cash !== false);
+    const hasDebit = !formData.wants_delivery && cart.every(item => item.product.accepts_debit !== false);
+    const hasCredit = !formData.wants_delivery && cart.every(item => item.product.accepts_credit !== false);
+    
+    return { pix: hasPix, cash: hasCash, debit: hasDebit, credit: hasCredit };
   };
+
+  const availablePaymentMethods = getAvailablePaymentMethods();
 
   useEffect(() => {
     if (open && business) {
       fetchDeliveryZones();
-
-      // Se virou delivery, força PIX (pagamento online)
-      if (formData.wants_delivery) {
-        if (availablePaymentMethods.pix && formData.payment_method !== 'pix') {
-          setFormData(prev => ({ ...prev, payment_method: 'pix' }));
-        }
-        return;
+      
+      // Set default WhatsApp from profile if available
+      if (profile?.full_name) {
+        // Keep existing whatsapp if set
       }
-
-      // Retirada/no local: escolhe o primeiro disponível
-      if (availablePaymentMethods.cash) setFormData(prev => ({ ...prev, payment_method: 'cash' }));
-      else if (availablePaymentMethods.pix) setFormData(prev => ({ ...prev, payment_method: 'pix' }));
-      else if (availablePaymentMethods.debit) setFormData(prev => ({ ...prev, payment_method: 'debit' }));
-      else if (availablePaymentMethods.credit) setFormData(prev => ({ ...prev, payment_method: 'credit' }));
     }
-  }, [open, business, formData.wants_delivery]);
+  }, [open, business]);
+
+  useEffect(() => {
+    // Update payment method when delivery option changes
+    const methods = getAvailablePaymentMethods();
+    
+    if (formData.wants_delivery) {
+      // Force PIX for delivery
+      if (methods.pix) {
+        setFormData(prev => ({ ...prev, payment_method: 'pix' }));
+      }
+    } else {
+      // For pickup, select first available
+      if (methods.cash) {
+        setFormData(prev => ({ ...prev, payment_method: 'cash' }));
+      } else if (methods.pix) {
+        setFormData(prev => ({ ...prev, payment_method: 'pix' }));
+      } else if (methods.debit) {
+        setFormData(prev => ({ ...prev, payment_method: 'debit' }));
+      } else if (methods.credit) {
+        setFormData(prev => ({ ...prev, payment_method: 'credit' }));
+      }
+    }
+  }, [formData.wants_delivery, business]);
 
   const fetchDeliveryZones = async () => {
     const { data, error } = await supabase
@@ -170,7 +187,11 @@ export function CheckoutDialog({
     return calculateSubtotal() + calculateDeliveryFee();
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!user) {
       toast({
         title: 'Faça login',
@@ -562,7 +583,8 @@ export function CheckoutDialog({
               Cancelar
             </Button>
             <Button 
-              onClick={handleSubmit} 
+              type="button"
+              onClick={(e) => handleSubmit(e)} 
               disabled={submitting}
               className="w-full sm:w-auto gap-2"
             >

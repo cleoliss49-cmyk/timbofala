@@ -15,8 +15,22 @@ export default function Settings() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
+    try {
+      await signOut();
+      // Force clear any remaining state
+      window.localStorage.removeItem('supabase.auth.token');
+      // Navigate to auth page
+      navigate('/auth', { replace: true });
+      // Force reload to clear any cached state
+      window.location.reload();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: 'Erro ao sair',
+        description: 'Tente novamente',
+        variant: 'destructive'
+      });
+    }
   };
 
   return (

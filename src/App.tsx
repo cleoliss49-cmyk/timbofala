@@ -64,6 +64,7 @@ const App = () => (
               <Route path="/post/:postId" element={<Post />} />
               <Route path="/paquera" element={<Paquera />} />
               <Route path="/empresas" element={<Businesses />} />
+              <Route path="/commerce" element={<Businesses />} />
               <Route path="/empresa/criar" element={<BusinessSetup />} />
               <Route path="/empresa/gerenciar" element={<BusinessManage />} />
               <Route path="/empresa/pagamentos" element={<BusinessPaymentSettings />} />
