@@ -217,16 +217,17 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
 
   return (
     <>
-      <Card className="border-primary/20">
-        <CardHeader>
+      {/* Main Commission Card - "Comissão à Pagar" */}
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-primary/10">
-                <DollarSign className="w-5 h-5 text-primary" />
+              <div className="p-3 rounded-full bg-primary/10">
+                <DollarSign className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">Comissão da Plataforma</CardTitle>
-                <CardDescription>Taxa de 7% sobre vendas realizadas</CardDescription>
+                <CardTitle className="text-xl">Comissão à Pagar</CardTitle>
+                <CardDescription>Taxa de 7% sobre pedidos concluídos</CardDescription>
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={() => setShowHistoryDialog(true)}>
@@ -236,40 +237,86 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Payment Alert */}
+          {/* Current Month Commission Box */}
+          <div className="p-4 rounded-xl bg-background border">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                {currentMonthCommission ? formatMonthYear(currentMonthCommission.month_year) : 'Mês Atual'}
+              </h4>
+              {currentMonthCommission && currentMonthCommission.status === 'paid' && (
+                <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Pago
+                </Badge>
+              )}
+            </div>
+            
+            {currentMonthCommission ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-lg bg-muted/30">
+                  <p className="text-xs text-muted-foreground mb-1">Vendas Concluídas</p>
+                  <p className="text-xl font-bold">
+                    R$ {currentMonthCommission.total_sales.toFixed(2)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-primary/10">
+                  <p className="text-xs text-muted-foreground mb-1">Comissão (7%)</p>
+                  <p className="text-xl font-bold text-primary">
+                    R$ {currentMonthCommission.commission_amount.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground">Nenhuma venda concluída este mês</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  A comissão é calculada apenas sobre pedidos entregues
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Alert - Previous Month Pending */}
           {pendingCommission && (
-            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5" />
+                <div className="p-2 rounded-full bg-amber-500/20">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-amber-600 dark:text-amber-400">
+                  <h4 className="font-semibold text-amber-700 dark:text-amber-400">
                     Pagamento Pendente
                   </h4>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Referente a {formatMonthYear(pendingCommission.month_year)}
+                    Referente a <span className="font-medium capitalize">{formatMonthYear(pendingCommission.month_year)}</span>
                   </p>
-                  <div className="flex items-center justify-between mt-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Valor a pagar:</p>
-                      <p className="text-2xl font-bold text-primary">
-                        R$ {pendingCommission.commission_amount.toFixed(2)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        (7% de R$ {pendingCommission.total_sales.toFixed(2)} em vendas)
-                      </p>
+                  <div className="mt-4 p-3 rounded-lg bg-background">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total a pagar:</p>
+                        <p className="text-3xl font-bold text-primary">
+                          R$ {pendingCommission.commission_amount.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          7% de R$ {pendingCommission.total_sales.toFixed(2)} em vendas
+                        </p>
+                      </div>
+                      <Button 
+                        size="lg"
+                        className="shadow-lg"
+                        onClick={() => {
+                          setSelectedCommission(pendingCommission);
+                          setShowPaymentDialog(true);
+                        }}
+                      >
+                        <QrCode className="w-5 h-5 mr-2" />
+                        Pagar Agora
+                      </Button>
                     </div>
-                    <Button 
-                      onClick={() => {
-                        setSelectedCommission(pendingCommission);
-                        setShowPaymentDialog(true);
-                      }}
-                    >
-                      <QrCode className="w-4 h-4 mr-2" />
-                      Efetuar Pagamento
-                    </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    <Calendar className="w-3 h-3 inline mr-1" />
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
                     Prazo: até dia 05 do mês
                   </p>
                 </div>
@@ -279,11 +326,13 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
 
           {/* Awaiting Confirmation */}
           {commissions.some(c => c.status === 'awaiting_confirmation') && (
-            <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
               <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-blue-500" />
+                <div className="p-2 rounded-full bg-blue-500/20 animate-pulse">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                </div>
                 <div>
-                  <h4 className="font-semibold text-blue-600 dark:text-blue-400">
+                  <h4 className="font-semibold text-blue-700 dark:text-blue-400">
                     Aguardando Confirmação
                   </h4>
                   <p className="text-sm text-muted-foreground">
@@ -294,35 +343,26 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
             </div>
           )}
 
-          {/* Current Month Stats */}
-          {currentMonthCommission && (
-            <div className="p-4 rounded-lg bg-muted/50">
-              <h4 className="text-sm font-medium text-muted-foreground">
-                Mês Atual ({formatMonthYear(currentMonthCommission.month_year)})
-              </h4>
-              <div className="grid grid-cols-2 gap-4 mt-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Vendas Realizadas</p>
-                  <p className="text-lg font-semibold">
-                    R$ {currentMonthCommission.total_sales.toFixed(2)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Comissão Acumulada</p>
-                  <p className="text-lg font-semibold text-primary">
-                    R$ {currentMonthCommission.commission_amount.toFixed(2)}
-                  </p>
-                </div>
+          {/* All Paid */}
+          {!currentMonthCommission && !pendingCommission && !commissions.some(c => c.status === 'awaiting_confirmation') && (
+            <div className="text-center py-6">
+              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-green-500/10 flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-green-500" />
               </div>
+              <p className="font-medium text-green-600">Tudo em dia!</p>
+              <p className="text-sm text-muted-foreground">Sem comissões pendentes</p>
             </div>
           )}
 
-          {!currentMonthCommission && !pendingCommission && (
-            <div className="text-center py-4 text-muted-foreground">
-              <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
-              <p className="text-sm">Sem comissões pendentes</p>
-            </div>
-          )}
+          {/* Info Text */}
+          <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg">
+            <p className="font-medium mb-1">📌 Como funciona:</p>
+            <ul className="space-y-1 list-disc list-inside">
+              <li>A comissão é de <strong>7%</strong> sobre o valor dos pedidos <strong>entregues</strong></li>
+              <li>Pedidos rejeitados ou cancelados <strong>não</strong> são contabilizados</li>
+              <li>O pagamento deve ser feito até o <strong>dia 05</strong> de cada mês</li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
 
