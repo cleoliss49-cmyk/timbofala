@@ -93,6 +93,9 @@ interface Order {
   total: number;
   wants_delivery: boolean;
   delivery_address: string | null;
+  delivery_street: string | null;
+  delivery_number: string | null;
+  delivery_reference: string | null;
   customer_phone: string | null;
   customer_notes: string | null;
   customer_neighborhood: string | null;

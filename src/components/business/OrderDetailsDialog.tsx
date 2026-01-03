@@ -47,6 +47,9 @@ interface Order {
   total: number;
   wants_delivery: boolean;
   delivery_address: string | null;
+  delivery_street: string | null;
+  delivery_number: string | null;
+  delivery_reference: string | null;
   customer_phone: string | null;
   customer_notes: string | null;
   customer_neighborhood: string | null;
@@ -287,7 +290,7 @@ export function OrderDetailsDialog({
               </div>
 
               {/* Delivery Info */}
-              {order.wants_delivery && order.delivery_address && (
+              {order.wants_delivery && (order.delivery_address || order.delivery_street) && (
                 <div className="rounded-xl border bg-gradient-to-br from-blue-50/50 to-background p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Truck className="w-4 h-4 text-blue-600" />
@@ -297,8 +300,21 @@ export function OrderDetailsDialog({
                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                       <MapPin className="w-5 h-5 text-blue-600" />
                     </div>
-                    <div>
-                      <p className="font-medium">{order.delivery_address}</p>
+                    <div className="space-y-1">
+                      {order.delivery_street && order.delivery_number ? (
+                        <>
+                          <p className="font-medium">
+                            {order.delivery_street}, {order.delivery_number}
+                          </p>
+                          {order.delivery_reference && (
+                            <p className="text-sm text-muted-foreground">
+                              📍 {order.delivery_reference}
+                            </p>
+                          )}
+                        </>
+                      ) : order.delivery_address && (
+                        <p className="font-medium">{order.delivery_address}</p>
+                      )}
                       {order.customer_neighborhood && (
                         <Badge variant="outline" className="mt-2">
                           {order.customer_neighborhood}
