@@ -68,6 +68,8 @@ interface BusinessCommission {
   month_year: string;
   total_sales: number;
   commission_amount: number;
+  paid_amount: number;
+  balance: number;
   status: 'pending' | 'awaiting_confirmation' | 'paid';
   receipt_url: string | null;
   receipt_uploaded_at: string | null;
@@ -153,6 +155,7 @@ export default function AdminCommissions() {
   const [processing, setProcessing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderDetailDialog, setShowOrderDetailDialog] = useState(false);
+  const [paidAmountInput, setPaidAmountInput] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -278,6 +281,8 @@ export default function AdminCommissions() {
             month_year: commission.month_year,
             total_sales: commission.total_sales,
             commission_amount: commission.commission_amount,
+            paid_amount: commission.paid_amount || 0,
+            balance: commission.balance || commission.commission_amount,
             status: commission.status as 'pending' | 'awaiting_confirmation' | 'paid',
             receipt_url: commission.receipt_url,
             receipt_uploaded_at: commission.receipt_uploaded_at,
@@ -306,13 +311,15 @@ export default function AdminCommissions() {
 
       const deliveredThisMonth = (thisMonthOrders || []).filter(o => o.status === 'delivered');
 
-      const totalPendingAmount = pendingCommissions.reduce((acc, c) => acc + c.commission_amount, 0);
-      const totalAwaitingAmount = awaitingCommissions.reduce((acc, c) => acc + c.commission_amount, 0);
+      // Calculate totals only from platform_commissions (already deduplicated by trigger)
+      const totalPendingAmount = pendingCommissions.reduce((acc, c) => acc + (c.balance || c.commission_amount), 0);
+      const totalAwaitingAmount = awaitingCommissions.reduce((acc, c) => acc + (c.balance || c.commission_amount), 0);
+      const totalPaidAmount = paidCommissions.reduce((acc, c) => acc + (c.paid_amount || c.commission_amount), 0);
       
       setStats({
         totalPending: totalPendingAmount,
         totalAwaitingConfirmation: totalAwaitingAmount,
-        totalPaid: paidCommissions.reduce((acc, c) => acc + c.commission_amount, 0),
+        totalPaid: totalPaidAmount,
         totalBusinesses: businessesWithStats.length,
         totalOrdersThisMonth: (thisMonthOrders || []).length,
         totalSalesThisMonth: deliveredThisMonth.reduce((acc, o) => acc + (o.total || 0), 0),
@@ -387,24 +394,42 @@ export default function AdminCommissions() {
 
     setProcessing(true);
     try {
+      const paidValue = paidAmountInput ? parseFloat(paidAmountInput.replace(',', '.')) : selectedBusiness.commission.commission_amount;
+      const newBalance = selectedBusiness.commission.commission_amount - paidValue;
+      const newStatus = newBalance <= 0 ? 'paid' : 'pending';
+      
       const { error } = await supabase
         .from('platform_commissions')
         .update({
-          status: 'paid',
+          status: newStatus,
+          paid_amount: paidValue,
+          balance: Math.max(0, newBalance),
           paid_at: new Date().toISOString(),
-          confirmed_by: user!.id
+          confirmed_by: user!.id,
+          admin_notes: newBalance > 0 
+            ? `Pagamento parcial: R$ ${paidValue.toFixed(2)}. Saldo devedor: R$ ${newBalance.toFixed(2)}`
+            : newBalance < 0 
+            ? `Pagamento acima: R$ ${paidValue.toFixed(2)}. Crédito: R$ ${Math.abs(newBalance).toFixed(2)}`
+            : null
         })
         .eq('id', selectedBusiness.commission.id);
 
       if (error) throw error;
 
+      const message = newBalance > 0 
+        ? `Pagamento parcial registrado. Saldo devedor: R$ ${newBalance.toFixed(2)}`
+        : newBalance < 0
+        ? `Pagamento confirmado com crédito de R$ ${Math.abs(newBalance).toFixed(2)}`
+        : `Comissão de ${selectedBusiness.business_name} marcada como paga.`;
+
       toast({
-        title: 'Pagamento confirmado!',
-        description: `Comissão de ${selectedBusiness.business_name} marcada como paga.`
+        title: 'Pagamento registrado!',
+        description: message
       });
 
       setShowConfirmDialog(false);
       setSelectedBusiness(null);
+      setPaidAmountInput('');
       fetchData();
     } catch (error) {
       console.error('Error confirming payment:', error);
@@ -1183,14 +1208,42 @@ export default function AdminCommissions() {
       </Dialog>
 
       {/* Confirm Dialog */}
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      <AlertDialog open={showConfirmDialog} onOpenChange={(open) => {
+        setShowConfirmDialog(open);
+        if (!open) setPaidAmountInput('');
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
-            <AlertDialogDescription>
-              Confirmar que a empresa <strong>{selectedBusiness?.business_name}</strong> pagou a comissão de{' '}
-              <strong>R$ {selectedBusiness?.commission?.commission_amount.toFixed(2)}</strong> referente a{' '}
-              <strong>{selectedBusiness?.commission && formatMonthYear(selectedBusiness.commission.month_year)}</strong>?
+            <AlertDialogDescription className="space-y-4">
+              <p>
+                Confirmar pagamento da empresa <strong>{selectedBusiness?.business_name}</strong>.
+              </p>
+              
+              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                <div className="flex justify-between">
+                  <span>Comissão devida:</span>
+                  <span className="font-bold">R$ {selectedBusiness?.commission?.commission_amount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Referente a:</span>
+                  <span className="capitalize">{selectedBusiness?.commission && formatMonthYear(selectedBusiness.commission.month_year)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Valor pago pela empresa:</label>
+                <Input
+                  type="text"
+                  placeholder={`R$ ${selectedBusiness?.commission?.commission_amount.toFixed(2) || '0.00'}`}
+                  value={paidAmountInput}
+                  onChange={(e) => setPaidAmountInput(e.target.value)}
+                  className="text-lg"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Deixe em branco para confirmar o valor total. Se pagar menos, fica devendo. Se pagar mais, fica em crédito.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
