@@ -119,7 +119,7 @@ export function CommissionAlertButton({ businessId, businessName }: CommissionAl
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `commissions/${businessId}/${pendingCommission.month_year}/${Date.now()}.${fileExt}`;
+      const fileName = `commissions/${businessId}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('receipts')
@@ -131,22 +131,22 @@ export function CommissionAlertButton({ businessId, businessName }: CommissionAl
         .from('receipts')
         .getPublicUrl(fileName);
 
-      // Update all pending commissions for this business
-      const { error: updateError } = await supabase
-        .from('platform_commissions')
-        .update({
+      // Insert into commission_receipts table (never overwrites!)
+      const { error: insertError } = await supabase
+        .from('commission_receipts')
+        .insert({
+          business_id: businessId,
           receipt_url: urlData.publicUrl,
-          receipt_uploaded_at: new Date().toISOString(),
-          status: 'awaiting_confirmation'
-        })
-        .eq('business_id', businessId)
-        .eq('status', 'pending');
+          reference_month: format(new Date(), 'yyyy-MM'),
+          amount_claimed: pendingCommission.commission_amount,
+          notes: `Comprovante enviado via botão rápido em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`
+        });
 
-      if (updateError) throw updateError;
+      if (insertError) throw insertError;
 
       toast({
-        title: 'Comprovante enviado!',
-        description: 'Aguarde a confirmação do administrador.'
+        title: '✅ Comprovante enviado!',
+        description: 'Aguarde a confirmação do administrador (até 48h).'
       });
 
       setShowPaymentDialog(false);
