@@ -7,6 +7,7 @@ import { PostCard } from '@/components/feed/PostCard';
 import { CreatePost } from '@/components/feed/CreatePost';
 import { PinnedPosts } from '@/components/feed/PinnedPosts';
 import { BanNotice } from '@/components/BanNotice';
+import { StoriesBar } from '@/components/stories/StoriesBar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Sparkles, TrendingUp, RefreshCw } from 'lucide-react';
@@ -100,6 +101,7 @@ export default function Feed() {
     <MainLayout>
       <div className="max-w-2xl mx-auto">
         <BanNotice />
+        <StoriesBar />
         <CreatePost onPostCreated={fetchPosts} />
         <PinnedPosts location="feed" onRefresh={fetchPosts} />
 
