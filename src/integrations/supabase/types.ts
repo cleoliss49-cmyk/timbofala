@@ -706,6 +706,136 @@ export type Database = {
           },
         ]
       }
+      classified_favorites: {
+        Row: {
+          classified_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          classified_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          classified_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classified_favorites_classified_id_fkey"
+            columns: ["classified_id"]
+            isOneToOne: false
+            referencedRelation: "classifieds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classified_images: {
+        Row: {
+          classified_id: string
+          created_at: string
+          id: string
+          image_url: string
+          sort_order: number | null
+        }
+        Insert: {
+          classified_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+          sort_order?: number | null
+        }
+        Update: {
+          classified_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classified_images_classified_id_fkey"
+            columns: ["classified_id"]
+            isOneToOne: false
+            referencedRelation: "classifieds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classifieds: {
+        Row: {
+          category: string
+          contact_email: string | null
+          contact_phone: string | null
+          contact_whatsapp: string | null
+          created_at: string
+          description: string
+          expires_at: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          is_urgent: boolean
+          location: string | null
+          neighborhood: string | null
+          price: number | null
+          price_type: string | null
+          subcategory: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          views_count: number
+        }
+        Insert: {
+          category?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_whatsapp?: string | null
+          created_at?: string
+          description: string
+          expires_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_urgent?: boolean
+          location?: string | null
+          neighborhood?: string | null
+          price?: number | null
+          price_type?: string | null
+          subcategory?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          views_count?: number
+        }
+        Update: {
+          category?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_whatsapp?: string | null
+          created_at?: string
+          description?: string
+          expires_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          is_urgent?: boolean
+          location?: string | null
+          neighborhood?: string | null
+          price?: number | null
+          price_type?: string | null
+          subcategory?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          views_count?: number
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
@@ -1844,6 +1974,68 @@ export type Database = {
           },
         ]
       }
+      stories: {
+        Row: {
+          caption: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          media_type: string
+          media_url: string
+          user_id: string
+          views_count: number
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_type?: string
+          media_url: string
+          user_id: string
+          views_count?: number
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          user_id?: string
+          views_count?: number
+        }
+        Relationships: []
+      }
+      story_views: {
+        Row: {
+          id: string
+          story_id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          story_id: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          story_id?: string
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_views_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_bans: {
         Row: {
           banned_at: string
@@ -1948,6 +2140,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_stories: { Args: never; Returns: undefined }
       get_user_ban_info: {
         Args: { _user_id: string }
         Returns: {
