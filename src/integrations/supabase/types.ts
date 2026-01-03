@@ -327,6 +327,9 @@ export type Database = {
           payment_method: string | null
           payment_status: string | null
           pix_code: string | null
+          receipt_uploaded_at: string | null
+          receipt_url: string | null
+          rejection_reason: string | null
           status: string
           subtotal: number
           total: number
@@ -349,6 +352,9 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           pix_code?: string | null
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
+          rejection_reason?: string | null
           status?: string
           subtotal: number
           total: number
@@ -371,6 +377,9 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           pix_code?: string | null
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
+          rejection_reason?: string | null
           status?: string
           subtotal?: number
           total?: number

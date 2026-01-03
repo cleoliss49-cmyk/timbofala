@@ -115,6 +115,7 @@ const ORDER_STATUS = [
   { value: 'preparing', label: 'Preparando', color: 'bg-purple-500', textColor: 'text-purple-600' },
   { value: 'ready', label: 'Pronto', color: 'bg-indigo-500', textColor: 'text-indigo-600' },
   { value: 'delivered', label: 'Entregue', color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+  { value: 'rejected', label: 'Rejeitado', color: 'bg-orange-600', textColor: 'text-orange-700' },
   { value: 'cancelled', label: 'Cancelado', color: 'bg-red-500', textColor: 'text-red-600' }
 ];
 
@@ -759,8 +760,21 @@ export default function BusinessManage() {
                             </>
                           )}
                           
+                          {/* Reject Order Button - visible for pending orders */}
+                          {order.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateOrderStatus(order.id, 'rejected')}
+                              className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Rejeitar Pedido
+                            </Button>
+                          )}
+                          
                           {ORDER_STATUS.filter(s => 
-                            !['cancelled', 'awaiting_payment', 'pending_confirmation'].includes(s.value)
+                            !['cancelled', 'awaiting_payment', 'pending_confirmation', 'rejected'].includes(s.value)
                           ).map(status => (
                             <Button
                               key={status.value}
