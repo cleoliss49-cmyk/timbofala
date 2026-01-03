@@ -162,6 +162,38 @@ export default function AdminCommissions() {
     }
   }, [user, authLoading]);
 
+  // Realtime subscription for automatic updates
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const ordersChannel = supabase
+      .channel('admin-orders-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'business_orders'
+      }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    const commissionsChannel = supabase
+      .channel('admin-commissions-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'platform_commissions'
+      }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(commissionsChannel);
+    };
+  }, [isAdmin]);
+
   const checkAdminAccess = async () => {
     try {
       const { data } = await supabase
@@ -187,6 +219,11 @@ export default function AdminCommissions() {
     setLoading(true);
     try {
       const currentMonth = format(new Date(), 'yyyy-MM');
+      
+      // Calculate month date range for filtering orders
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
       // Fetch all businesses with their stats
       const { data: businessesData, error: businessesError } = await supabase
@@ -197,14 +234,16 @@ export default function AdminCommissions() {
 
       if (businessesError) throw businessesError;
 
-      // Fetch orders for all businesses
+      // Fetch orders for this month only
       const { data: ordersData, error: ordersError } = await supabase
         .from('business_orders')
-        .select('business_id, status, total');
+        .select('business_id, status, total, created_at')
+        .gte('created_at', monthStart.toISOString())
+        .lte('created_at', monthEnd.toISOString());
 
       if (ordersError) throw ordersError;
 
-      // Fetch commissions
+      // Fetch commissions for current month
       const { data: commissionsData, error: commissionsError } = await supabase
         .from('platform_commissions')
         .select('*')
@@ -212,12 +251,15 @@ export default function AdminCommissions() {
 
       if (commissionsError) throw commissionsError;
 
-      // Build business data with stats
+      // Build business data with stats from this month
       const businessesWithStats: BusinessData[] = (businessesData || []).map(business => {
         const businessOrders = (ordersData || []).filter(o => o.business_id === business.id);
         const deliveredOrders = businessOrders.filter(o => o.status === 'delivered');
-        const totalSales = deliveredOrders.reduce((acc, o) => acc + (o.total || 0), 0);
         const commission = (commissionsData || []).find(c => c.business_id === business.id) || null;
+        
+        // Use commission record data if available (more accurate), otherwise calculate
+        const totalSales = commission ? commission.total_sales : deliveredOrders.reduce((acc, o) => acc + (o.total || 0), 0);
+        const commissionAmount = commission ? commission.commission_amount : totalSales * 0.07;
 
         return {
           id: business.id,
@@ -762,10 +804,10 @@ export default function AdminCommissions() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            R$ {business.total_sales.toFixed(2)}
+                            R$ {(business.commission?.total_sales ?? business.total_sales).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right font-semibold text-primary">
-                            R$ {(business.total_sales * 0.07).toFixed(2)}
+                            R$ {(business.commission?.commission_amount ?? (business.total_sales * 0.07)).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-center">
                             {getCommissionStatusBadge(business)}

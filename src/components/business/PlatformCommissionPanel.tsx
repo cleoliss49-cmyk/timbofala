@@ -504,10 +504,9 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
                 />
               </div>
 
-              <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground">Chave PIX (CPF):</p>
-                <p className="font-mono text-lg font-bold">096.078.909-06</p>
-                <p className="text-sm text-muted-foreground">Bruno Eduardo Ochner</p>
+              <div className="text-center p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                <p className="text-sm font-medium text-green-700">✓ QR Code pronto para pagamento</p>
+                <p className="text-xs text-muted-foreground mt-1">Escaneie ou copie o código abaixo</p>
               </div>
 
               <Button

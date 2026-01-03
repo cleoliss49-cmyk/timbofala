@@ -207,11 +207,10 @@ export function CommissionAlertButton({ businessId, businessName }: CommissionAl
               />
             </div>
 
-            {/* PIX Info */}
-            <div className="text-center space-y-2 p-4 bg-muted/50 rounded-lg">
-              <p className="text-xs text-muted-foreground">Chave PIX (CPF):</p>
-              <p className="font-mono text-lg font-bold">096.078.909-06</p>
-              <p className="text-sm text-muted-foreground">Bruno Eduardo Ochner</p>
+            {/* PIX Info - Hidden for privacy */}
+            <div className="text-center p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+              <p className="text-sm font-medium text-green-700">✓ QR Code pronto para pagamento</p>
+              <p className="text-xs text-muted-foreground mt-1">Escaneie ou copie o código abaixo</p>
             </div>
 
             {/* Copy Button */}

@@ -1442,6 +1442,30 @@ export type Database = {
           },
         ]
       }
+      platform_commission_charges: {
+        Row: {
+          business_id: string
+          charged_at: string
+          month_year: string
+          order_id: string
+          total: number
+        }
+        Insert: {
+          business_id: string
+          charged_at?: string
+          month_year: string
+          order_id: string
+          total: number
+        }
+        Update: {
+          business_id?: string
+          charged_at?: string
+          month_year?: string
+          order_id?: string
+          total?: number
+        }
+        Relationships: []
+      }
       platform_commissions: {
         Row: {
           admin_notes: string | null
