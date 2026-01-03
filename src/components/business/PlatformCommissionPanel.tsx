@@ -43,6 +43,20 @@ interface Commission {
   created_at: string;
 }
 
+interface CommissionPayment {
+  id: string;
+  amount: number;
+  confirmed_at: string;
+  notes: string | null;
+}
+
+interface BalanceData {
+  total_commission: number;
+  total_paid: number;
+  current_balance: number;
+  pending_months: number;
+}
+
 interface Order {
   id: string;
   order_number: string;
@@ -60,11 +74,14 @@ interface PlatformCommissionPanelProps {
 export function PlatformCommissionPanel({ businessId, businessName }: PlatformCommissionPanelProps) {
   const { toast } = useToast();
   const [commissions, setCommissions] = useState<Commission[]>([]);
+  const [payments, setPayments] = useState<CommissionPayment[]>([]);
+  const [balance, setBalance] = useState<BalanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [selectedCommission, setSelectedCommission] = useState<Commission | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [showPaymentsHistory, setShowPaymentsHistory] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showOrdersReport, setShowOrdersReport] = useState(false);
   const [reportOrders, setReportOrders] = useState<Order[]>([]);
@@ -73,12 +90,12 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
   const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchCommissions();
+    fetchData();
     setupRealtime();
   }, [businessId]);
 
   const setupRealtime = () => {
-    const channel = supabase
+    const commissionsChannel = supabase
       .channel('commissions-realtime')
       .on(
         'postgres_changes',
@@ -89,28 +106,68 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
           filter: `business_id=eq.${businessId}`
         },
         () => {
-          fetchCommissions();
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    const paymentsChannel = supabase
+      .channel('payments-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'commission_payments',
+          filter: `business_id=eq.${businessId}`
+        },
+        () => {
+          fetchData();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(commissionsChannel);
+      supabase.removeChannel(paymentsChannel);
     };
   };
 
-  const fetchCommissions = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch commissions
+      const { data: commissionsData, error: commissionsError } = await supabase
         .from('platform_commissions')
         .select('*')
         .eq('business_id', businessId)
         .order('month_year', { ascending: false });
 
-      if (error) throw error;
-      setCommissions((data as unknown as Commission[]) || []);
+      if (commissionsError) throw commissionsError;
+      setCommissions((commissionsData as unknown as Commission[]) || []);
+
+      // Fetch payments history
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('commission_payments')
+        .select('*')
+        .eq('business_id', businessId)
+        .not('confirmed_at', 'is', null)
+        .order('confirmed_at', { ascending: false });
+
+      if (paymentsError) throw paymentsError;
+      setPayments(paymentsData || []);
+
+      // Calculate real balance
+      const totalCommission = (commissionsData || []).reduce((sum, c: any) => sum + (c.commission_amount || 0), 0);
+      const totalPaid = (paymentsData || []).reduce((sum, p: any) => sum + (p.amount || 0), 0);
+      
+      setBalance({
+        total_commission: totalCommission,
+        total_paid: totalPaid,
+        current_balance: Math.max(0, totalCommission - totalPaid),
+        pending_months: (commissionsData || []).filter((c: any) => c.status !== 'paid').length
+      });
     } catch (error) {
-      console.error('Error fetching commissions:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -148,10 +205,9 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
     return commissions.find(c => c.month_year === currentMonth);
   };
 
+  // Use the real calculated balance instead of just pending commissions
   const getTotalPendingAmount = () => {
-    return commissions
-      .filter(c => c.status === 'pending')
-      .reduce((sum, c) => sum + c.commission_amount, 0);
+    return balance?.current_balance || 0;
   };
 
   const handleUploadReceipt = async (file: File, commissionId?: string) => {
@@ -194,7 +250,7 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
 
       setShowPaymentDialog(false);
       setSelectedCommission(null);
-      fetchCommissions();
+      fetchData();
     } catch (error) {
       console.error('Error uploading receipt:', error);
       toast({
@@ -387,16 +443,44 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
               </div>
               <div>
                 <CardTitle className="text-xl">Comissões da Plataforma</CardTitle>
-                <CardDescription>Taxa de 7% sobre pedidos concluídos</CardDescription>
+                <CardDescription>Taxa de 7% sobre pedidos entregues</CardDescription>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowHistoryDialog(true)}>
-              <Receipt className="w-4 h-4 mr-2" />
-              Histórico Completo
-            </Button>
+            <div className="flex gap-2">
+              {payments.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setShowPaymentsHistory(true)}>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Pagamentos
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setShowHistoryDialog(true)}>
+                <Receipt className="w-4 h-4 mr-2" />
+                Histórico
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Balance Summary - Enterprise Level */}
+          {balance && (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-4 rounded-xl bg-muted/50 border">
+                <p className="text-xs text-muted-foreground mb-1">Total Comissões</p>
+                <p className="text-xl font-bold">R$ {balance.total_commission.toFixed(2)}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                <p className="text-xs text-green-700 mb-1">Total Pago</p>
+                <p className="text-xl font-bold text-green-700">R$ {balance.total_paid.toFixed(2)}</p>
+              </div>
+              <div className={`p-4 rounded-xl border ${balance.current_balance > 0 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-green-500/10 border-green-500/20'}`}>
+                <p className={`text-xs mb-1 ${balance.current_balance > 0 ? 'text-amber-700' : 'text-green-700'}`}>Saldo Devedor</p>
+                <p className={`text-xl font-bold ${balance.current_balance > 0 ? 'text-amber-700' : 'text-green-700'}`}>
+                  R$ {balance.current_balance.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Current Month Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-background border">
@@ -407,7 +491,7 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
               <p className="text-2xl font-bold">
                 R$ {(currentMonthCommission?.total_sales || 0).toFixed(2)}
               </p>
-              <p className="text-xs text-muted-foreground">em vendas concluídas</p>
+              <p className="text-xs text-muted-foreground">em vendas entregues</p>
             </div>
             <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
               <div className="flex items-center gap-2 mb-2">
@@ -421,22 +505,52 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
             </div>
           </div>
 
-          {/* Pending Alert */}
+          {/* Pending Balance Alert with Pay Button */}
           {totalPending > 0 && (
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="w-6 h-6 text-amber-600" />
                   <div>
-                    <p className="font-semibold text-amber-700">Comissão Pendente</p>
+                    <p className="font-semibold text-amber-700">Saldo Devedor</p>
                     <p className="text-sm text-muted-foreground">
                       Prazo: até dia 05 do mês
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex items-center gap-4">
                   <p className="text-3xl font-bold text-amber-700">
                     R$ {totalPending.toFixed(2)}
+                  </p>
+                  {commissions.length > 0 && commissions.some(c => c.status !== 'paid') && (
+                    <Button 
+                      size="sm"
+                      onClick={() => {
+                        // Select the oldest pending commission
+                        const pendingCommission = commissions.find(c => c.status === 'pending');
+                        if (pendingCommission) {
+                          setSelectedCommission(pendingCommission);
+                          setShowPaymentDialog(true);
+                        }
+                      }}
+                    >
+                      Pagar Agora
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Balance Paid */}
+          {balance && balance.current_balance === 0 && balance.total_commission > 0 && (
+            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="font-semibold text-green-700">Saldo Quitado! ✅</p>
+                  <p className="text-sm text-muted-foreground">
+                    Todas as comissões estão pagas. Obrigado!
                   </p>
                 </div>
               </div>
@@ -465,10 +579,72 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
               <li>Apenas pedidos <strong>entregues</strong> contam para comissão</li>
               <li>Pedidos cancelados ou rejeitados <strong>não</strong> são cobrados</li>
               <li>Pagamento via PIX até o <strong>dia 05</strong> de cada mês</li>
+              <li>Seu saldo é atualizado automaticamente após cada pagamento confirmado</li>
             </ul>
           </div>
         </CardContent>
       </Card>
+
+      {/* Payments History Dialog */}
+      <Dialog open={showPaymentsHistory} onOpenChange={setShowPaymentsHistory}>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Histórico de Pagamentos
+            </DialogTitle>
+            <DialogDescription>
+              Todos os pagamentos confirmados pelo administrador
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 max-h-[50vh]">
+            {payments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Nenhum pagamento registrado ainda.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {payments.map((payment) => (
+                  <div key={payment.id} className="p-3 rounded-lg border bg-green-50/50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-green-700">
+                          R$ {payment.amount.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(payment.confirmed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                        {payment.notes && (
+                          <p className="text-xs text-muted-foreground mt-1">{payment.notes}</p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/20">
+                        Confirmado
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+
+          {balance && (
+            <div className="mt-4 p-3 rounded-lg bg-muted/50 border">
+              <div className="flex justify-between text-sm">
+                <span>Total Pago:</span>
+                <span className="font-bold text-green-700">R$ {balance.total_paid.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm mt-1">
+                <span>Saldo Devedor:</span>
+                <span className={`font-bold ${balance.current_balance > 0 ? 'text-amber-700' : 'text-green-700'}`}>
+                  R$ {balance.current_balance.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Payment Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
