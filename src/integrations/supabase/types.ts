@@ -226,6 +226,13 @@ export type Database = {
             foreignKeyName: "business_coupons_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
+            referencedRelation: "business_monthly_summary"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "business_coupons_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
             referencedRelation: "business_profiles"
             referencedColumns: ["id"]
           },
@@ -265,6 +272,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "business_commission_summary"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "business_delivery_zones_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_monthly_summary"
             referencedColumns: ["business_id"]
           },
           {
@@ -421,6 +435,13 @@ export type Database = {
             foreignKeyName: "business_orders_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
+            referencedRelation: "business_monthly_summary"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "business_orders_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
             referencedRelation: "business_profiles"
             referencedColumns: ["id"]
           },
@@ -529,6 +550,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "business_commission_summary"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "business_products_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_monthly_summary"
             referencedColumns: ["business_id"]
           },
           {
@@ -688,6 +716,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "business_commission_summary"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "business_reviews_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_monthly_summary"
             referencedColumns: ["business_id"]
           },
           {
@@ -962,6 +997,7 @@ export type Database = {
           payment_method: string
           receipt_uploaded_at: string | null
           receipt_url: string | null
+          reference_month: string | null
         }
         Insert: {
           amount: number
@@ -975,6 +1011,7 @@ export type Database = {
           payment_method?: string
           receipt_uploaded_at?: string | null
           receipt_url?: string | null
+          reference_month?: string | null
         }
         Update: {
           amount?: number
@@ -988,6 +1025,7 @@ export type Database = {
           payment_method?: string
           receipt_uploaded_at?: string | null
           receipt_url?: string | null
+          reference_month?: string | null
         }
         Relationships: [
           {
@@ -995,6 +1033,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "business_commission_summary"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "commission_payments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_monthly_summary"
             referencedColumns: ["business_id"]
           },
           {
@@ -1009,6 +1054,73 @@ export type Database = {
             columns: ["commission_id"]
             isOneToOne: false
             referencedRelation: "platform_commissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_receipts: {
+        Row: {
+          amount_claimed: number | null
+          business_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          receipt_url: string
+          reference_month: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          uploaded_at: string
+        }
+        Insert: {
+          amount_claimed?: number | null
+          business_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          receipt_url: string
+          reference_month?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          uploaded_at?: string
+        }
+        Update: {
+          amount_claimed?: number | null
+          business_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          receipt_url?: string
+          reference_month?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_receipts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_commission_summary"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "commission_receipts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_monthly_summary"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "commission_receipts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1629,6 +1741,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "business_commission_summary"
+            referencedColumns: ["business_id"]
+          },
+          {
+            foreignKeyName: "platform_commissions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_monthly_summary"
             referencedColumns: ["business_id"]
           },
           {
@@ -2383,6 +2502,21 @@ export type Database = {
           slug: string | null
           total_commission: number | null
           total_paid: number | null
+          total_sales: number | null
+        }
+        Relationships: []
+      }
+      business_monthly_summary: {
+        Row: {
+          business_id: string | null
+          business_name: string | null
+          commission_amount: number | null
+          commission_status: string | null
+          logo_url: string | null
+          month_year: string | null
+          paid_for_month: number | null
+          receipts_count: number | null
+          slug: string | null
           total_sales: number | null
         }
         Relationships: []
