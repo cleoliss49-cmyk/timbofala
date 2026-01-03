@@ -48,6 +48,7 @@ interface BusinessProfile {
   offers_delivery: boolean;
   delivery_fee: number | null;
   whatsapp: string | null;
+  estimated_prep_time_minutes: number | null;
 }
 
 interface CartItem {
@@ -459,6 +460,25 @@ export function CheckoutDialog({
             </div>
 
             <Separator />
+
+            {/* Estimated Time Info */}
+            {business.estimated_prep_time_minutes && (
+              <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl border border-primary/10">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Tempo estimado</p>
+                  <p className="text-xs text-muted-foreground">
+                    {business.estimated_prep_time_minutes < 60 
+                      ? `${business.estimated_prep_time_minutes} minutos`
+                      : `${Math.floor(business.estimated_prep_time_minutes / 60)}h${business.estimated_prep_time_minutes % 60 > 0 ? business.estimated_prep_time_minutes % 60 : ''}`
+                    }
+                    {formData.wants_delivery ? ' para entrega' : ' para retirada'}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Order Summary */}
             <div className="space-y-2">
