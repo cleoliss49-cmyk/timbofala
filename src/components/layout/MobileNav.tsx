@@ -40,8 +40,13 @@ export function MobileNav() {
               return (
                 <button
                   key={item.path}
-                  onClick={() => setShowCreateDialog(true)}
-                  className="flex flex-col items-center justify-center w-full h-full gap-1 transition-colors text-muted-foreground hover:text-primary"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowCreateDialog(true);
+                  }}
+                  className="flex flex-col items-center justify-center w-full h-full gap-1 transition-colors text-muted-foreground hover:text-primary active:scale-95"
                 >
                   <item.icon className="w-6 h-6" />
                   <span className="text-2xs font-medium">{item.label}</span>
