@@ -359,12 +359,12 @@ export function PixPaymentDialog({
               <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
               <p className="font-medium">Enviar Comprovante</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Após pagar, envie o comprovante aqui
+                PNG, JPG, PDF ou outros formatos (máx. 5MB)
               </p>
             </div>
             <input
               type="file"
-              accept="image/*,.pdf"
+              accept="image/*,.pdf,.doc,.docx,.heic,.webp"
               className="hidden"
               onChange={handleFileSelect}
             />

@@ -88,6 +88,7 @@ const ORDER_STATUS = [
   { value: 'preparing', label: 'Preparando', icon: ChefHat, emoji: '🍳', description: 'Seu pedido está sendo preparado', color: 'from-purple-500 to-pink-500' },
   { value: 'ready', label: 'Pronto', icon: Package, emoji: '📦', description: 'Pronto para retirada/entrega', color: 'from-indigo-500 to-blue-500' },
   { value: 'delivered', label: 'Entregue', icon: CheckCircle, emoji: '🚚', description: 'Pedido finalizado', color: 'from-green-600 to-emerald-600' },
+  { value: 'rejected', label: 'Rejeitado', icon: XCircle, emoji: '🚫', description: 'Pedido rejeitado pela loja', color: 'from-orange-600 to-red-500' },
   { value: 'cancelled', label: 'Cancelado', icon: XCircle, emoji: '❌', description: 'Pedido cancelado', color: 'from-red-500 to-rose-500' }
 ];
 
@@ -292,11 +293,11 @@ export default function MyOrders() {
   };
 
   const activeOrders = orders.filter(o => 
-    !['delivered', 'cancelled'].includes(o.status)
+    !['delivered', 'cancelled', 'rejected'].includes(o.status)
   );
   
   const completedOrders = orders.filter(o => 
-    ['delivered', 'cancelled'].includes(o.status)
+    ['delivered', 'cancelled', 'rejected'].includes(o.status)
   );
 
   const getOrderProgress = (order: Order) => {
@@ -540,7 +541,7 @@ export default function MyOrders() {
                               </Button>
                               <input
                                 type="file"
-                                accept="image/*,.pdf"
+                                accept="image/*,.pdf,.doc,.docx,.heic,.webp"
                                 className="hidden"
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
