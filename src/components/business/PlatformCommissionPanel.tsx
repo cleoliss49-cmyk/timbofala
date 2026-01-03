@@ -472,7 +472,7 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
 
       {/* Payment Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <QrCode className="w-5 h-5" />
@@ -484,7 +484,7 @@ export function PlatformCommissionPanel({ businessId, businessName }: PlatformCo
           </DialogHeader>
 
           {selectedCommission && (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto flex-1 pr-2">
               <div className="text-center p-4 bg-primary/10 rounded-xl">
                 <p className="text-sm text-muted-foreground">Valor:</p>
                 <p className="text-4xl font-bold text-primary">

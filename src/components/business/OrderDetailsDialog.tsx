@@ -265,11 +265,12 @@ export function OrderDetailsDialog({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-semibold text-lg">{order.customer.full_name}</p>
-                    {order.customer_phone && (
+                    {order.customer_phone && !['pending', 'rejected', 'cancelled'].includes(order.status) && (
                       <p className="text-muted-foreground">{order.customer_phone}</p>
                     )}
                   </div>
-                  {order.customer_phone && (
+                  {/* Only show WhatsApp button after order is accepted (not pending, rejected or cancelled) */}
+                  {order.customer_phone && !['pending', 'rejected', 'cancelled'].includes(order.status) && (
                     <Button 
                       size="sm"
                       className="gap-2 bg-green-600 hover:bg-green-700 text-white"
@@ -285,6 +286,12 @@ export function OrderDetailsDialog({
                       WhatsApp
                       <ExternalLink className="w-3 h-3" />
                     </Button>
+                  )}
+                  {/* Message shown when order is still pending */}
+                  {['pending'].includes(order.status) && (
+                    <Badge variant="outline" className="text-muted-foreground">
+                      Aceite o pedido para ver contato
+                    </Badge>
                   )}
                 </div>
               </div>
