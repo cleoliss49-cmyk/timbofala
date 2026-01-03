@@ -22,6 +22,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Camera, Loader2, Heart, AlertTriangle } from 'lucide-react';
+import { TIMBO_NEIGHBORHOODS } from '@/lib/neighborhoods';
 
 interface PaqueraSetupDialogProps {
   open: boolean;
@@ -287,13 +288,22 @@ export function PaqueraSetupDialog({
             </div>
 
             <div>
-              <Label>Cidade *</Label>
-              <Input
+              <Label>Bairro *</Label>
+              <Select
                 value={formData.city}
-                onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                placeholder="Sua cidade"
-                required
-              />
+                onValueChange={(v) => setFormData(prev => ({ ...prev, city: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione seu bairro" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMBO_NEIGHBORHOODS.map((neighborhood) => (
+                    <SelectItem key={neighborhood} value={neighborhood}>
+                      {neighborhood}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
