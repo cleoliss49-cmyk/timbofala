@@ -156,15 +156,11 @@ export function PixPaymentDialog({
         .from('receipts')
         .getPublicUrl(fileName);
 
-      // Update order with receipt
-      const { error: updateError } = await supabase
-        .from('business_orders')
-        .update({
-          receipt_url: publicUrl,
-          receipt_uploaded_at: new Date().toISOString(),
-          payment_status: 'pending_confirmation'
-        })
-        .eq('id', orderId);
+      // Use the secure RPC function to update the order
+      const { error: updateError } = await supabase.rpc('submit_pix_receipt', {
+        _order_id: orderId,
+        _receipt_url: publicUrl
+      });
 
       if (updateError) throw updateError;
 
