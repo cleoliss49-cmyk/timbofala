@@ -99,39 +99,34 @@ export function CommissionReportDialog({ open, onOpenChange, business, onPayment
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'total'>('month');
-  
+
   // Data
   const [orders, setOrders] = useState<Order[]>([]);
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [payments, setPayments] = useState<CommissionPayment[]>([]);
   const [receipts, setReceipts] = useState<CommissionReceipt[]>([]);
-  
+
   // Calculated
   const [totalCommission, setTotalCommission] = useState(0);
   const [totalPaid, setTotalPaid] = useState(0);
   const [currentBalance, setCurrentBalance] = useState(0);
-  
+
   // Payment dialog
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
-  const [paymentMonth, setPaymentMonth] = useState('');
   const [processing, setProcessing] = useState(false);
-  
+
   // Receipts dialog
   const [showReceiptsDialog, setShowReceiptsDialog] = useState(false);
-  const [selectedReceiptUrl, setSelectedReceiptUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open && business) {
-      fetchData();
-    }
+    if (open && business) fetchData();
   }, [open, business, selectedMonth, viewMode]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const monthYear = format(selectedMonth, 'yyyy-MM');
       const monthStart = startOfMonth(selectedMonth);
       const monthEnd = endOfMonth(selectedMonth);
 
@@ -150,7 +145,7 @@ export function CommissionReportDialog({ open, onOpenChange, business, onPayment
         .not('confirmed_at', 'is', null)
         .order('confirmed_at', { ascending: false });
 
-      // Fetch all receipts
+      // Fetch receipts
       const { data: receiptsData } = await supabase
         .from('commission_receipts')
         .select('*')
@@ -162,34 +157,28 @@ export function CommissionReportDialog({ open, onOpenChange, business, onPayment
       setReceipts(receiptsData || []);
 
       // Calculate totals
-      const totalComm = (commissionsData || []).reduce((sum, c) => sum + (c.commission_amount || 0), 0);
-      const totalPaidAmount = (paymentsData || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+      const totalComm = (commissionsData || []).reduce((sum, c: any) => sum + (c.commission_amount || 0), 0);
+      const totalPaidAmount = (paymentsData || []).reduce((sum, p: any) => sum + (p.amount || 0), 0);
       setTotalCommission(totalComm);
       setTotalPaid(totalPaidAmount);
       setCurrentBalance(Math.max(0, totalComm - totalPaidAmount));
 
-      // Fetch orders for selected month
+      // Orders for view mode
+      let ordersQuery = supabase
+        .from('business_orders')
+        .select('*')
+        .eq('business_id', business.id)
+        .order('created_at', { ascending: false });
+
       if (viewMode === 'month') {
-        const { data: ordersData } = await supabase
-          .from('business_orders')
-          .select('*')
-          .eq('business_id', business.id)
-          .gte('created_at', monthStart.toISOString())
-          .lte('created_at', monthEnd.toISOString())
-          .order('created_at', { ascending: false });
-
-        setOrders(ordersData || []);
-      } else {
-        const { data: ordersData } = await supabase
-          .from('business_orders')
-          .select('*')
-          .eq('business_id', business.id)
-          .order('created_at', { ascending: false });
-
-        setOrders(ordersData || []);
+        ordersQuery = ordersQuery.gte('created_at', monthStart.toISOString()).lte('created_at', monthEnd.toISOString());
       }
+
+      const { data: ordersData } = await ordersQuery;
+      setOrders(ordersData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
+      toast({ title: 'Erro ao carregar relatório', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -644,49 +633,72 @@ export function CommissionReportDialog({ open, onOpenChange, business, onPayment
               </div>
             ) : (
               <div className="space-y-3">
-                {receipts.map((receipt) => (
-                  <div key={receipt.id} className="p-4 rounded-lg border bg-card">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">
-                          {receipt.reference_month 
-                            ? format(new Date(receipt.reference_month + '-01'), "MMMM/yyyy", { locale: ptBR })
-                            : 'Sem mês específico'
-                          }
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Enviado em {format(new Date(receipt.uploaded_at), "dd/MM/yyyy 'às' HH:mm")}
-                        </p>
-                        {receipt.amount_claimed && (
-                          <p className="text-sm mt-1">Valor informado: R$ {receipt.amount_claimed.toFixed(2)}</p>
-                        )}
+                {receipts.map((receipt) => {
+                  const monthLabel = receipt.reference_month
+                    ? format(new Date(receipt.reference_month + '-01'), "MMMM/yyyy", { locale: ptBR })
+                    : 'Sem mês específico';
+
+                  const fileName = `comprovante-${business.slug}-${receipt.reference_month || 'sem-mes'}-${receipt.id}.pdf`;
+
+                  return (
+                    <div key={receipt.id} className="p-4 rounded-lg border bg-card">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{monthLabel}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Enviado em {format(new Date(receipt.uploaded_at), "dd/MM/yyyy 'às' HH:mm")}
+                          </p>
+                          {receipt.amount_claimed != null && (
+                            <p className="text-sm mt-1">Valor informado: R$ {receipt.amount_claimed.toFixed(2)}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              receipt.status === 'confirmed'
+                                ? 'bg-green-100 text-green-700 border-green-200'
+                                : receipt.status === 'rejected'
+                                  ? 'bg-red-100 text-red-700 border-red-200'
+                                  : 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                            }
+                          >
+                            {receipt.status === 'confirmed'
+                              ? 'Confirmado'
+                              : receipt.status === 'rejected'
+                                ? 'Rejeitado'
+                                : 'Pendente'}
+                          </Badge>
+                          <Button variant="outline" size="sm" onClick={() => window.open(receipt.receipt_url, '_blank')}>
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              const res = await fetch(receipt.receipt_url);
+                              const blob = await res.blob();
+                              const objectUrl = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = objectUrl;
+                              a.download = fileName;
+                              document.body.appendChild(a);
+                              a.click();
+                              a.remove();
+                              URL.revokeObjectURL(objectUrl);
+                            }}
+                          >
+                            <FileText className="w-4 h-4 mr-1" />
+                            Baixar
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge 
-                          variant="outline"
-                          className={
-                            receipt.status === 'confirmed' ? 'bg-green-100 text-green-700 border-green-200' :
-                            receipt.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
-                            'bg-yellow-100 text-yellow-700 border-yellow-200'
-                          }
-                        >
-                          {receipt.status === 'confirmed' ? 'Confirmado' : 
-                           receipt.status === 'rejected' ? 'Rejeitado' : 'Pendente'}
-                        </Badge>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(receipt.receipt_url, '_blank')}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      {receipt.notes && (
+                        <p className="text-sm text-muted-foreground mt-2 pt-2 border-t">{receipt.notes}</p>
+                      )}
                     </div>
-                    {receipt.notes && (
-                      <p className="text-sm text-muted-foreground mt-2 pt-2 border-t">{receipt.notes}</p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ScrollArea>

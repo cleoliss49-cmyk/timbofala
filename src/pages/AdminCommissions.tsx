@@ -117,14 +117,15 @@ export default function AdminCommissions() {
   // Month filter
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'total'>('total');
-  
+
   // Report dialog
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessData | null>(null);
   const [showReportDialog, setShowReportDialog] = useState(false);
-  
-  // Pending receipts dialog
-  const [showPendingReceiptsDialog, setShowPendingReceiptsDialog] = useState(false);
-  const [pendingReceipts, setPendingReceipts] = useState<CommissionReceipt[]>([]);
+
+  // Receipts dialog (admin)
+  const [showReceiptsDialog, setShowReceiptsDialog] = useState(false);
+  const [receiptsTab, setReceiptsTab] = useState<'pending' | 'all'>('pending');
+  const [receipts, setReceipts] = useState<CommissionReceipt[]>([]);
   const [loadingReceipts, setLoadingReceipts] = useState(false);
 
   useEffect(() => {
@@ -140,14 +141,35 @@ export default function AdminCommissions() {
     if (!isAdmin) return;
 
     const channels = [
-      supabase.channel('admin-orders').on('postgres_changes', { event: '*', schema: 'public', table: 'business_orders' }, () => fetchData()).subscribe(),
-      supabase.channel('admin-commissions').on('postgres_changes', { event: '*', schema: 'public', table: 'platform_commissions' }, () => fetchData()).subscribe(),
-      supabase.channel('admin-payments').on('postgres_changes', { event: '*', schema: 'public', table: 'commission_payments' }, () => fetchData()).subscribe(),
-      supabase.channel('admin-receipts').on('postgres_changes', { event: '*', schema: 'public', table: 'commission_receipts' }, () => fetchData()).subscribe(),
+      supabase
+        .channel('admin-orders')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'business_orders' }, () => fetchData())
+        .subscribe(),
+      supabase
+        .channel('admin-commissions')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_commissions' }, () => fetchData())
+        .subscribe(),
+      supabase
+        .channel('admin-payments')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'commission_payments' }, () => fetchData())
+        .subscribe(),
+      supabase
+        .channel('admin-receipts')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'commission_receipts' }, () => {
+          fetchData();
+          if (showReceiptsDialog) fetchReceipts(receiptsTab);
+        })
+        .subscribe(),
     ];
 
-    return () => channels.forEach(ch => supabase.removeChannel(ch));
-  }, [isAdmin]);
+    return () => channels.forEach((ch) => supabase.removeChannel(ch));
+  }, [isAdmin, showReceiptsDialog, receiptsTab]);
+
+  // Reload data when month/view changes
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetchData();
+  }, [isAdmin, selectedMonth, viewMode]);
 
   const checkAdminAccess = async () => {
     try {
@@ -173,7 +195,6 @@ export default function AdminCommissions() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const monthYear = format(selectedMonth, 'yyyy-MM');
       const monthStart = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
       const monthEnd = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0, 23, 59, 59, 999);
 
@@ -187,7 +208,9 @@ export default function AdminCommissions() {
       // Fetch orders based on view mode
       let ordersQuery = supabase.from('business_orders').select('business_id, status, total, created_at');
       if (viewMode === 'month') {
-        ordersQuery = ordersQuery.gte('created_at', monthStart.toISOString()).lte('created_at', monthEnd.toISOString());
+        ordersQuery = ordersQuery
+          .gte('created_at', monthStart.toISOString())
+          .lte('created_at', monthEnd.toISOString());
       }
       const { data: ordersData } = await ordersQuery;
 
@@ -201,30 +224,22 @@ export default function AdminCommissions() {
         .not('confirmed_at', 'is', null)
         .order('created_at', { ascending: false });
 
-      // Fetch pending receipts count
-      const { data: receiptsData } = await supabase
+      // Pending receipts count (for badge)
+      const { count: pendingReceiptsCount } = await supabase
         .from('commission_receipts')
-        .select('*')
+        .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
 
       // Build business data
-      const businessesWithStats: BusinessData[] = (businessesData || []).map(business => {
-        const businessOrders = (ordersData || []).filter(o => o.business_id === business.id);
-        const deliveredOrders = businessOrders.filter(o => o.status === 'delivered');
-        const businessCommissions = (commissionsData || []).filter(c => c.business_id === business.id);
-        const businessPayments = (paymentsData || []).filter(p => p.business_id === business.id);
-        const businessPendingReceipts = (receiptsData || []).filter(r => r.business_id === business.id);
-        
-        const totalCommission = businessCommissions.reduce((sum, c) => sum + (c.commission_amount || 0), 0);
-        const totalPaid = businessPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const businessesWithStats: BusinessData[] = (businessesData || []).map((business) => {
+        const businessOrders = (ordersData || []).filter((o) => o.business_id === business.id);
+        const deliveredOrders = businessOrders.filter((o) => o.status === 'delivered');
+        const businessCommissions = (commissionsData || []).filter((c: any) => c.business_id === business.id);
+        const businessPayments = (paymentsData || []).filter((p: any) => p.business_id === business.id);
+
+        const totalCommission = businessCommissions.reduce((sum: number, c: any) => sum + (c.commission_amount || 0), 0);
+        const totalPaid = businessPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
         const currentBalance = Math.max(0, totalCommission - totalPaid);
-        
-        let balanceStatus: 'pending' | 'awaiting_confirmation' | 'paid' = 'pending';
-        if (currentBalance <= 0) {
-          balanceStatus = 'paid';
-        } else if (businessPendingReceipts.length > 0) {
-          balanceStatus = 'awaiting_confirmation';
-        }
 
         return {
           id: business.id,
@@ -236,41 +251,62 @@ export default function AdminCommissions() {
           accepted_platform_terms: business.accepted_platform_terms || false,
           orders_count: businessOrders.length,
           orders_delivered_count: deliveredOrders.length,
-          total_sales: deliveredOrders.reduce((sum, o) => sum + (o.total || 0), 0),
+          total_sales: deliveredOrders.reduce((sum: number, o: any) => sum + (o.total || 0), 0),
           total_commission: totalCommission,
           total_paid: totalPaid,
           current_balance: currentBalance,
-          balance_status: balanceStatus,
+          balance_status: currentBalance <= 0 ? 'paid' : 'pending',
           payments: businessPayments,
-          pending_receipts_count: businessPendingReceipts.length
+          pending_receipts_count: 0,
         };
       });
 
-      setBusinesses(businessesWithStats);
+      // Enrich pending receipts counts per business
+      const { data: pendingByBusiness } = await supabase
+        .from('commission_receipts')
+        .select('business_id')
+        .eq('status', 'pending');
+
+      const pendingMap = (pendingByBusiness || []).reduce<Record<string, number>>((acc, r: any) => {
+        acc[r.business_id] = (acc[r.business_id] || 0) + 1;
+        return acc;
+      }, {});
+
+      const enrichedBusinesses = businessesWithStats.map((b) => {
+        const pendingCount = pendingMap[b.id] || 0;
+        const balanceStatus: 'pending' | 'awaiting_confirmation' | 'paid' =
+          b.current_balance <= 0 ? 'paid' : pendingCount > 0 ? 'awaiting_confirmation' : 'pending';
+        return {
+          ...b,
+          balance_status: balanceStatus,
+          pending_receipts_count: pendingCount,
+        };
+      });
+
+      setBusinesses(enrichedBusinesses);
 
       // Calculate stats
-      const totalPendingAmount = businessesWithStats
-        .filter(b => b.current_balance > 0 && b.balance_status === 'pending')
+      const totalPendingAmount = enrichedBusinesses
+        .filter((b) => b.current_balance > 0 && b.balance_status === 'pending')
         .reduce((sum, b) => sum + b.current_balance, 0);
-      
-      const totalAwaitingAmount = businessesWithStats
-        .filter(b => b.balance_status === 'awaiting_confirmation')
+
+      const totalAwaitingAmount = enrichedBusinesses
+        .filter((b) => b.balance_status === 'awaiting_confirmation')
         .reduce((sum, b) => sum + b.current_balance, 0);
-      
-      const totalPaidAmount = businessesWithStats.reduce((sum, b) => sum + b.total_paid, 0);
-      const deliveredThisMonth = (ordersData || []).filter(o => o.status === 'delivered');
+
+      const totalPaidAmount = enrichedBusinesses.reduce((sum, b) => sum + b.total_paid, 0);
+      const deliveredThisMonth = (ordersData || []).filter((o: any) => o.status === 'delivered');
 
       setStats({
         totalPending: totalPendingAmount,
         totalAwaitingConfirmation: totalAwaitingAmount,
         totalPaid: totalPaidAmount,
-        totalBusinesses: businessesWithStats.length,
+        totalBusinesses: enrichedBusinesses.length,
         totalOrdersThisMonth: (ordersData || []).length,
-        totalSalesThisMonth: deliveredThisMonth.reduce((acc, o) => acc + (o.total || 0), 0),
+        totalSalesThisMonth: deliveredThisMonth.reduce((acc: number, o: any) => acc + (o.total || 0), 0),
         totalCommissionToReceive: totalPendingAmount + totalAwaitingAmount,
-        pendingReceiptsCount: (receiptsData || []).length
+        pendingReceiptsCount: pendingReceiptsCount || 0,
       });
-
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({ title: 'Erro ao carregar dados', variant: 'destructive' });
@@ -279,21 +315,32 @@ export default function AdminCommissions() {
     }
   };
 
-  const fetchPendingReceipts = async () => {
+  const fetchReceipts = async (tab: 'pending' | 'all') => {
     setLoadingReceipts(true);
     try {
-      const { data } = await supabase
-        .from('commission_receipts')
-        .select('*')
-        .eq('status', 'pending')
-        .order('uploaded_at', { ascending: false });
-
-      setPendingReceipts(data || []);
+      let q = supabase.from('commission_receipts').select('*').order('uploaded_at', { ascending: false });
+      if (tab === 'pending') q = q.eq('status', 'pending');
+      const { data } = await q;
+      setReceipts((data || []) as CommissionReceipt[]);
     } catch (error) {
       console.error('Error fetching receipts:', error);
+      toast({ title: 'Erro ao carregar comprovantes', variant: 'destructive' });
     } finally {
       setLoadingReceipts(false);
     }
+  };
+
+  const downloadPdf = async (url: string, filename: string) => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
   };
 
   const handleConfirmReceipt = async (receipt: CommissionReceipt, action: 'confirm' | 'reject') => {
@@ -327,7 +374,7 @@ export default function AdminCommissions() {
         description: action === 'confirm' ? 'Pagamento registrado automaticamente.' : 'O lojista será notificado.'
       });
 
-      fetchPendingReceipts();
+      if (showReceiptsDialog) fetchReceipts(receiptsTab);
       fetchData();
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -387,22 +434,23 @@ export default function AdminCommissions() {
             </p>
           </div>
           <div className="flex gap-2">
-            {stats.pendingReceiptsCount > 0 && (
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  fetchPendingReceipts();
-                  setShowPendingReceiptsDialog(true);
-                }}
-                className="relative"
-              >
-                <Receipt className="w-4 h-4 mr-2" />
-                Comprovantes
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReceiptsTab('pending');
+                fetchReceipts('pending');
+                setShowReceiptsDialog(true);
+              }}
+              className="relative"
+            >
+              <Receipt className="w-4 h-4 mr-2" />
+              Comprovantes
+              {stats.pendingReceiptsCount > 0 && (
                 <span className="absolute -top-2 -right-2 px-2 py-0.5 text-xs bg-red-500 text-white rounded-full">
                   {stats.pendingReceiptsCount}
                 </span>
-              </Button>
-            )}
+              )}
+            </Button>
             <Button variant="outline" onClick={() => navigate('/admin')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar
@@ -418,7 +466,7 @@ export default function AdminCommissions() {
                 <Button
                   variant={viewMode === 'total' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => { setViewMode('total'); fetchData(); }}
+                  onClick={() => setViewMode('total')}
                 >
                   <TrendingUp className="w-4 h-4 mr-2" />
                   Total Geral
@@ -426,7 +474,7 @@ export default function AdminCommissions() {
                 <Button
                   variant={viewMode === 'month' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => { setViewMode('month'); fetchData(); }}
+                  onClick={() => setViewMode('month')}
                 >
                   <Calendar className="w-4 h-4 mr-2" />
                   Por Mês
@@ -435,15 +483,23 @@ export default function AdminCommissions() {
 
               {viewMode === 'month' && (
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => { setSelectedMonth(prev => subMonths(prev, 1)); }}>
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <span className="font-medium px-4 capitalize min-w-[180px] text-center">
-                    {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}
-                  </span>
-                  <Button variant="ghost" size="sm" onClick={() => { setSelectedMonth(prev => addMonths(prev, 1)); }}>
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => setSelectedMonth((prev) => subMonths(prev, 1))}
+                   >
+                     <ChevronLeft className="w-4 h-4" />
+                   </Button>
+                   <span className="font-medium px-4 capitalize min-w-[180px] text-center">
+                     {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+                   </span>
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => setSelectedMonth((prev) => addMonths(prev, 1))}
+                   >
+                     <ChevronRight className="w-4 h-4" />
+                   </Button>
                 </div>
               )}
             </div>
@@ -720,81 +776,111 @@ export default function AdminCommissions() {
         />
       )}
 
-      {/* Pending Receipts Dialog */}
-      <Dialog open={showPendingReceiptsDialog} onOpenChange={setShowPendingReceiptsDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+      {/* Receipts Dialog */}
+      <Dialog open={showReceiptsDialog} onOpenChange={setShowReceiptsDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="w-5 h-5" />
-              Comprovantes Pendentes ({pendingReceipts.length})
+              Comprovantes
             </DialogTitle>
             <DialogDescription>
-              Comprovantes enviados pelos lojistas aguardando confirmação
+              Visualize e baixe comprovantes (PDF) enviados pelos lojistas.
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[60vh]">
+          <div className="flex gap-2">
+            <Button
+              variant={receiptsTab === 'pending' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setReceiptsTab('pending');
+                fetchReceipts('pending');
+              }}
+            >
+              Pendentes
+              {stats.pendingReceiptsCount > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs bg-red-500 text-white rounded-full">
+                  {stats.pendingReceiptsCount}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant={receiptsTab === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setReceiptsTab('all');
+                fetchReceipts('all');
+              }}
+            >
+              Todos
+            </Button>
+          </div>
+
+          <ScrollArea className="max-h-[58vh] mt-2">
             {loadingReceipts ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin" />
               </div>
-            ) : pendingReceipts.length === 0 ? (
+            ) : receipts.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Receipt className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nenhum comprovante pendente</p>
+                <p>Nenhum comprovante encontrado</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {pendingReceipts.map((receipt) => {
-                  const business = businesses.find(b => b.id === receipt.business_id);
+                {receipts.map((receipt) => {
+                  const business = businesses.find((b) => b.id === receipt.business_id);
+                  const monthLabel = receipt.reference_month
+                    ? format(new Date(receipt.reference_month + '-01'), "MMMM/yyyy", { locale: ptBR })
+                    : 'Sem mês';
+
+                  const fileName = `comprovante-${business?.slug || 'empresa'}-${receipt.reference_month || 'sem-mes'}-${receipt.id}.pdf`;
+
                   return (
                     <div key={receipt.id} className="p-4 rounded-lg border bg-card">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={business?.logo_url || ''} />
-                            <AvatarFallback><Building2 className="w-4 h-4" /></AvatarFallback>
+                            <AvatarFallback>
+                              <Building2 className="w-4 h-4" />
+                            </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="font-medium">{business?.business_name || 'Empresa'}</p>
                             <p className="text-xs text-muted-foreground">
-                              Enviado em {format(new Date(receipt.uploaded_at), "dd/MM/yyyy 'às' HH:mm")}
+                              {monthLabel} • Enviado em {format(new Date(receipt.uploaded_at), "dd/MM/yyyy 'às' HH:mm")}
                             </p>
-                            {receipt.amount_claimed && (
-                              <p className="text-sm font-medium mt-1">
-                                Valor informado: R$ {receipt.amount_claimed.toFixed(2)}
-                              </p>
+                            {receipt.amount_claimed != null && (
+                              <p className="text-sm font-medium mt-1">Valor informado: R$ {receipt.amount_claimed.toFixed(2)}</p>
                             )}
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(receipt.receipt_url, '_blank')}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => window.open(receipt.receipt_url, '_blank')}>
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleConfirmReceipt(receipt, 'reject')}
-                          >
-                            Rejeitar
+                          <Button variant="outline" size="sm" onClick={() => downloadPdf(receipt.receipt_url, fileName)}>
+                            <FileText className="w-4 h-4 mr-1" />
+                            Baixar
                           </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleConfirmReceipt(receipt, 'confirm')}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Confirmar
-                          </Button>
+
+                          {receiptsTab === 'pending' && (
+                            <>
+                              <Button variant="destructive" size="sm" onClick={() => handleConfirmReceipt(receipt, 'reject')}>
+                                Rejeitar
+                              </Button>
+                              <Button size="sm" onClick={() => handleConfirmReceipt(receipt, 'confirm')}>
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Confirmar
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                       {receipt.notes && (
-                        <p className="text-sm text-muted-foreground mt-2 pt-2 border-t">
-                          {receipt.notes}
-                        </p>
+                        <p className="text-sm text-muted-foreground mt-2 pt-2 border-t">{receipt.notes}</p>
                       )}
                     </div>
                   );
