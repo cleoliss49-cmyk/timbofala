@@ -5,11 +5,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -24,7 +27,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -39,10 +41,25 @@ import {
 import { 
   DollarSign, Building2, Search, Eye, CheckCircle, 
   Clock, AlertTriangle, Receipt, TrendingUp, Users,
-  Calendar, Loader2, ExternalLink
+  Calendar, Loader2, ExternalLink, Package, FileText,
+  Truck, MapPin, CreditCard, Phone, ShoppingBag, ArrowLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+interface BusinessData {
+  id: string;
+  business_name: string;
+  slug: string;
+  logo_url: string | null;
+  user_id: string;
+  created_at: string;
+  accepted_platform_terms: boolean;
+  orders_count: number;
+  orders_delivered_count: number;
+  total_sales: number;
+  commission: BusinessCommission | null;
+}
 
 interface BusinessCommission {
   id: string;
@@ -54,11 +71,35 @@ interface BusinessCommission {
   receipt_url: string | null;
   receipt_uploaded_at: string | null;
   paid_at: string | null;
-  business: {
-    business_name: string;
-    slug: string;
-    logo_url: string | null;
-  };
+}
+
+interface OrderItem {
+  product_name: string;
+  quantity: number;
+  product_price: number;
+}
+
+interface Order {
+  id: string;
+  order_number: string;
+  status: string;
+  payment_method: string | null;
+  payment_status: string | null;
+  subtotal: number;
+  delivery_fee: number | null;
+  total: number;
+  wants_delivery: boolean;
+  delivery_address: string | null;
+  delivery_street: string | null;
+  delivery_number: string | null;
+  customer_neighborhood: string | null;
+  created_at: string;
+  customer: {
+    full_name: string;
+    username: string;
+    avatar_url: string | null;
+  } | null;
+  items: OrderItem[];
 }
 
 interface Stats {
@@ -66,8 +107,21 @@ interface Stats {
   totalAwaitingConfirmation: number;
   totalPaid: number;
   totalBusinesses: number;
-  totalCommissionThisMonth: number;
+  totalOrdersThisMonth: number;
+  totalSalesThisMonth: number;
 }
+
+const ORDER_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
+  pending: { label: 'Pendente', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
+  awaiting_payment: { label: 'Aguardando Pgto', color: 'text-orange-700', bgColor: 'bg-orange-100' },
+  pending_confirmation: { label: 'Aguardando Conf.', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+  confirmed: { label: 'Confirmado', color: 'text-green-700', bgColor: 'bg-green-100' },
+  preparing: { label: 'Em Preparo', color: 'text-purple-700', bgColor: 'bg-purple-100' },
+  ready: { label: 'Pronto', color: 'text-indigo-700', bgColor: 'bg-indigo-100' },
+  delivered: { label: 'Entregue', color: 'text-emerald-700', bgColor: 'bg-emerald-100' },
+  rejected: { label: 'Rejeitado', color: 'text-orange-700', bgColor: 'bg-orange-100' },
+  cancelled: { label: 'Cancelado', color: 'text-red-700', bgColor: 'bg-red-100' }
+};
 
 export default function AdminCommissions() {
   const navigate = useNavigate();
@@ -76,20 +130,26 @@ export default function AdminCommissions() {
 
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [commissions, setCommissions] = useState<BusinessCommission[]>([]);
+  const [businesses, setBusinesses] = useState<BusinessData[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalPending: 0,
     totalAwaitingConfirmation: 0,
     totalPaid: 0,
     totalBusinesses: 0,
-    totalCommissionThisMonth: 0
+    totalOrdersThisMonth: 0,
+    totalSalesThisMonth: 0
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('awaiting');
-  const [selectedCommission, setSelectedCommission] = useState<BusinessCommission | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
+  const [selectedBusiness, setSelectedBusiness] = useState<BusinessData | null>(null);
+  const [businessOrders, setBusinessOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [showOrdersDialog, setShowOrdersDialog] = useState(false);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showOrderDetailDialog, setShowOrderDetailDialog] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -123,47 +183,91 @@ export default function AdminCommissions() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch all commissions with business info
-      const { data: commissionsData, error } = await supabase
+      const currentMonth = format(new Date(), 'yyyy-MM');
+
+      // Fetch all businesses with their stats
+      const { data: businessesData, error: businessesError } = await supabase
+        .from('business_profiles')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (businessesError) throw businessesError;
+
+      // Fetch orders for all businesses
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('business_orders')
+        .select('business_id, status, total');
+
+      if (ordersError) throw ordersError;
+
+      // Fetch commissions
+      const { data: commissionsData, error: commissionsError } = await supabase
         .from('platform_commissions')
-        .select(`
-          *,
-          business:business_profiles!inner(
-            business_name,
-            slug,
-            logo_url
-          )
-        `)
-        .order('month_year', { ascending: false })
-        .order('status', { ascending: true });
+        .select('*')
+        .eq('month_year', currentMonth);
 
-      if (error) throw error;
+      if (commissionsError) throw commissionsError;
 
-      const typedCommissions = (commissionsData || []).map((c: any) => ({
-        ...c,
-        business: c.business
-      })) as BusinessCommission[];
+      // Build business data with stats
+      const businessesWithStats: BusinessData[] = (businessesData || []).map(business => {
+        const businessOrders = (ordersData || []).filter(o => o.business_id === business.id);
+        const deliveredOrders = businessOrders.filter(o => o.status === 'delivered');
+        const totalSales = deliveredOrders.reduce((acc, o) => acc + (o.total || 0), 0);
+        const commission = (commissionsData || []).find(c => c.business_id === business.id) || null;
 
-      setCommissions(typedCommissions);
+        return {
+          id: business.id,
+          business_name: business.business_name,
+          slug: business.slug,
+          logo_url: business.logo_url,
+          user_id: business.user_id,
+          created_at: business.created_at,
+          accepted_platform_terms: business.accepted_platform_terms || false,
+          orders_count: businessOrders.length,
+          orders_delivered_count: deliveredOrders.length,
+          total_sales: totalSales,
+          commission: commission ? {
+            id: commission.id,
+            business_id: commission.business_id,
+            month_year: commission.month_year,
+            total_sales: commission.total_sales,
+            commission_amount: commission.commission_amount,
+            status: commission.status as 'pending' | 'awaiting_confirmation' | 'paid',
+            receipt_url: commission.receipt_url,
+            receipt_uploaded_at: commission.receipt_uploaded_at,
+            paid_at: commission.paid_at
+          } : null
+        };
+      });
+
+      setBusinesses(businessesWithStats);
 
       // Calculate stats
-      const currentMonth = format(new Date(), 'yyyy-MM');
-      const pendingCommissions = typedCommissions.filter(c => c.status === 'pending');
-      const awaitingCommissions = typedCommissions.filter(c => c.status === 'awaiting_confirmation');
-      const paidCommissions = typedCommissions.filter(c => c.status === 'paid');
-      const thisMonthCommissions = typedCommissions.filter(c => c.month_year === currentMonth);
+      const allCommissions = commissionsData || [];
+      const pendingCommissions = allCommissions.filter(c => c.status === 'pending');
+      const awaitingCommissions = allCommissions.filter(c => c.status === 'awaiting_confirmation');
+      const paidCommissions = allCommissions.filter(c => c.status === 'paid');
 
-      // Get unique businesses
-      const { count: businessCount } = await supabase
-        .from('business_profiles')
-        .select('*', { count: 'exact', head: true });
+      // Get this month's orders
+      const thisMonthStart = new Date();
+      thisMonthStart.setDate(1);
+      thisMonthStart.setHours(0, 0, 0, 0);
+      
+      const { data: thisMonthOrders } = await supabase
+        .from('business_orders')
+        .select('total, status')
+        .gte('created_at', thisMonthStart.toISOString());
+
+      const deliveredThisMonth = (thisMonthOrders || []).filter(o => o.status === 'delivered');
 
       setStats({
         totalPending: pendingCommissions.reduce((acc, c) => acc + c.commission_amount, 0),
         totalAwaitingConfirmation: awaitingCommissions.reduce((acc, c) => acc + c.commission_amount, 0),
         totalPaid: paidCommissions.reduce((acc, c) => acc + c.commission_amount, 0),
-        totalBusinesses: businessCount || 0,
-        totalCommissionThisMonth: thisMonthCommissions.reduce((acc, c) => acc + c.commission_amount, 0)
+        totalBusinesses: businessesWithStats.length,
+        totalOrdersThisMonth: (thisMonthOrders || []).length,
+        totalSalesThisMonth: deliveredThisMonth.reduce((acc, o) => acc + (o.total || 0), 0)
       });
 
     } catch (error) {
@@ -177,8 +281,60 @@ export default function AdminCommissions() {
     }
   };
 
+  const fetchBusinessOrders = async (businessId: string) => {
+    setLoadingOrders(true);
+    try {
+      const { data, error } = await supabase
+        .from('business_orders')
+        .select(`
+          *,
+          items:business_order_items(
+            product_name,
+            quantity,
+            product_price
+          )
+        `)
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch customer profiles separately
+      const ordersWithCustomers = await Promise.all(
+        (data || []).map(async (order) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, username, avatar_url')
+            .eq('id', order.customer_id)
+            .maybeSingle();
+
+          return {
+            ...order,
+            customer: profile || { full_name: 'Cliente', username: 'unknown', avatar_url: null }
+          };
+        })
+      );
+
+      setBusinessOrders(ordersWithCustomers);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast({
+        title: 'Erro ao carregar pedidos',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const handleViewOrders = async (business: BusinessData) => {
+    setSelectedBusiness(business);
+    setShowOrdersDialog(true);
+    await fetchBusinessOrders(business.id);
+  };
+
   const handleConfirmPayment = async () => {
-    if (!selectedCommission) return;
+    if (!selectedBusiness?.commission) return;
 
     setProcessing(true);
     try {
@@ -189,17 +345,17 @@ export default function AdminCommissions() {
           paid_at: new Date().toISOString(),
           confirmed_by: user!.id
         })
-        .eq('id', selectedCommission.id);
+        .eq('id', selectedBusiness.commission.id);
 
       if (error) throw error;
 
       toast({
         title: 'Pagamento confirmado!',
-        description: `Comissão de ${selectedCommission.business.business_name} marcada como paga.`
+        description: `Comissão de ${selectedBusiness.business_name} marcada como paga.`
       });
 
       setShowConfirmDialog(false);
-      setSelectedCommission(null);
+      setSelectedBusiness(null);
       fetchData();
     } catch (error) {
       console.error('Error confirming payment:', error);
@@ -215,11 +371,18 @@ export default function AdminCommissions() {
   const formatMonthYear = (monthYear: string) => {
     const [year, month] = monthYear.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-    return format(date, "MMM/yyyy", { locale: ptBR });
+    return format(date, "MMMM/yyyy", { locale: ptBR });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
+  const getCommissionStatusBadge = (business: BusinessData) => {
+    if (!business.commission) {
+      if (business.total_sales === 0) {
+        return <Badge variant="outline" className="text-muted-foreground">Sem vendas</Badge>;
+      }
+      return <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20">Sem comissão</Badge>;
+    }
+
+    switch (business.commission.status) {
       case 'pending':
         return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Pendente</Badge>;
       case 'awaiting_confirmation':
@@ -227,19 +390,22 @@ export default function AdminCommissions() {
       case 'paid':
         return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Pago</Badge>;
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge>{business.commission.status}</Badge>;
     }
   };
 
-  const filteredCommissions = commissions.filter(c => {
-    const matchesSearch = c.business.business_name.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredBusinesses = businesses.filter(b => {
+    const matchesSearch = b.business_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTab = 
       activeTab === 'all' ||
-      (activeTab === 'awaiting' && c.status === 'awaiting_confirmation') ||
-      (activeTab === 'pending' && c.status === 'pending') ||
-      (activeTab === 'paid' && c.status === 'paid');
+      (activeTab === 'awaiting' && b.commission?.status === 'awaiting_confirmation') ||
+      (activeTab === 'pending' && b.commission?.status === 'pending') ||
+      (activeTab === 'paid' && b.commission?.status === 'paid') ||
+      (activeTab === 'no-sales' && b.total_sales === 0);
     return matchesSearch && matchesTab;
   });
+
+  const currentMonth = format(new Date(), 'MMMM/yyyy', { locale: ptBR });
 
   if (authLoading || loading) {
     return (
@@ -262,16 +428,59 @@ export default function AdminCommissions() {
           <div>
             <h1 className="text-2xl font-bold">Comissões da Plataforma</h1>
             <p className="text-muted-foreground">
-              Gerencie todas as comissões das empresas cadastradas
+              Gerencie todas as comissões das empresas - <span className="font-medium capitalize">{currentMonth}</span>
             </p>
           </div>
           <Button variant="outline" onClick={() => navigate('/admin')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar ao Painel
           </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-primary/10">
+                  <Building2 className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Empresas</p>
+                  <p className="text-lg font-bold">{stats.totalBusinesses}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-blue-500/10">
+                  <ShoppingBag className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Pedidos (mês)</p>
+                  <p className="text-lg font-bold">{stats.totalOrdersThisMonth}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-emerald-500/10">
+                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Vendas (mês)</p>
+                  <p className="text-lg font-bold">R$ {stats.totalSalesThisMonth.toFixed(2)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardContent className="pt-4">
               <div className="flex items-center gap-3">
@@ -307,22 +516,8 @@ export default function AdminCommissions() {
                   <CheckCircle className="w-4 h-4 text-green-500" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Recebido (Total)</p>
+                  <p className="text-xs text-muted-foreground">Recebido</p>
                   <p className="text-lg font-bold text-green-600">R$ {stats.totalPaid.toFixed(2)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-primary/10">
-                  <Building2 className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Empresas</p>
-                  <p className="text-lg font-bold">{stats.totalBusinesses}</p>
                 </div>
               </div>
             </CardContent>
@@ -333,7 +528,7 @@ export default function AdminCommissions() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-4">
-              <CardTitle>Lista de Comissões</CardTitle>
+              <CardTitle>Empresas Cadastradas</CardTitle>
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -347,118 +542,371 @@ export default function AdminCommissions() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
+              <TabsList className="mb-4 flex-wrap">
+                <TabsTrigger value="all">
+                  Todas ({businesses.length})
+                </TabsTrigger>
                 <TabsTrigger value="awaiting" className="relative">
-                  Aguardando Confirmação
-                  {commissions.filter(c => c.status === 'awaiting_confirmation').length > 0 && (
+                  Aguardando
+                  {businesses.filter(b => b.commission?.status === 'awaiting_confirmation').length > 0 && (
                     <span className="ml-2 px-1.5 py-0.5 text-xs bg-blue-500 text-white rounded-full">
-                      {commissions.filter(c => c.status === 'awaiting_confirmation').length}
+                      {businesses.filter(b => b.commission?.status === 'awaiting_confirmation').length}
                     </span>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="pending">Pendentes</TabsTrigger>
                 <TabsTrigger value="paid">Pagos</TabsTrigger>
-                <TabsTrigger value="all">Todos</TabsTrigger>
+                <TabsTrigger value="no-sales">Sem vendas</TabsTrigger>
               </TabsList>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Empresa</TableHead>
-                    <TableHead>Período</TableHead>
-                    <TableHead className="text-right">Vendas</TableHead>
-                    <TableHead className="text-right">Comissão (7%)</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Comprovante</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCommissions.length === 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Nenhuma comissão encontrada
-                      </TableCell>
+                      <TableHead>Empresa</TableHead>
+                      <TableHead className="text-center">Pedidos</TableHead>
+                      <TableHead className="text-center">Entregues</TableHead>
+                      <TableHead className="text-right">Vendas (mês)</TableHead>
+                      <TableHead className="text-right">Comissão (7%)</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Comprovante</TableHead>
+                      <TableHead>Ações</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredCommissions.map((commission) => (
-                      <TableRow key={commission.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {commission.business.logo_url ? (
-                              <img 
-                                src={commission.business.logo_url} 
-                                alt="" 
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <Building2 className="w-4 h-4 text-primary" />
-                              </div>
-                            )}
-                            <div>
-                              <p className="font-medium">{commission.business.business_name}</p>
-                              <p className="text-xs text-muted-foreground">/{commission.business.slug}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="capitalize">
-                          {formatMonthYear(commission.month_year)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          R$ {commission.total_sales.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          R$ {commission.commission_amount.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(commission.status)}
-                        </TableCell>
-                        <TableCell>
-                          {commission.receipt_url ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedCommission(commission);
-                                setShowReceiptDialog(true);
-                              }}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              Ver
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {commission.status === 'awaiting_confirmation' && (
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedCommission(commission);
-                                setShowConfirmDialog(true);
-                              }}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Confirmar Pago
-                            </Button>
-                          )}
-                          {commission.status === 'paid' && commission.paid_at && (
-                            <span className="text-xs text-muted-foreground">
-                              Pago em {format(new Date(commission.paid_at), 'dd/MM/yyyy')}
-                            </span>
-                          )}
+                  </TableHeader>
+                  <TableBody>
+                    {filteredBusinesses.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          Nenhuma empresa encontrada
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      filteredBusinesses.map((business) => (
+                        <TableRow key={business.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={business.logo_url || ''} />
+                                <AvatarFallback className="bg-primary/10">
+                                  <Building2 className="w-5 h-5 text-primary" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{business.business_name}</p>
+                                <p className="text-xs text-muted-foreground">/{business.slug}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline">{business.orders_count}</Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="secondary" className="bg-green-100 text-green-700">
+                              {business.orders_delivered_count}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            R$ {business.total_sales.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-primary">
+                            R$ {(business.total_sales * 0.07).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {getCommissionStatusBadge(business)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {business.commission?.receipt_url ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedBusiness(business);
+                                  setShowReceiptDialog(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                Ver
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleViewOrders(business)}
+                              >
+                                <FileText className="w-4 h-4 mr-1" />
+                                Relatório
+                              </Button>
+                              {business.commission?.status === 'awaiting_confirmation' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedBusiness(business);
+                                    setShowConfirmDialog(true);
+                                  }}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Pago
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </Tabs>
           </CardContent>
         </Card>
       </div>
+
+      {/* Orders Report Dialog */}
+      <Dialog open={showOrdersDialog} onOpenChange={setShowOrdersDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {selectedBusiness?.logo_url ? (
+                <Avatar>
+                  <AvatarImage src={selectedBusiness.logo_url} />
+                  <AvatarFallback><Building2 className="w-4 h-4" /></AvatarFallback>
+                </Avatar>
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-primary" />
+                </div>
+              )}
+              <div>
+                <span>{selectedBusiness?.business_name}</span>
+                <p className="text-sm font-normal text-muted-foreground">
+                  Relatório de Pedidos - {currentMonth}
+                </p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Stats Summary */}
+          <div className="grid grid-cols-4 gap-4 py-4">
+            <div className="p-3 rounded-lg bg-muted/50 text-center">
+              <p className="text-xs text-muted-foreground">Total Pedidos</p>
+              <p className="text-xl font-bold">{selectedBusiness?.orders_count || 0}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-green-100 text-center">
+              <p className="text-xs text-green-700">Entregues</p>
+              <p className="text-xl font-bold text-green-700">{selectedBusiness?.orders_delivered_count || 0}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-primary/10 text-center">
+              <p className="text-xs text-muted-foreground">Total Vendas</p>
+              <p className="text-xl font-bold">R$ {selectedBusiness?.total_sales.toFixed(2) || '0.00'}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-orange-100 text-center">
+              <p className="text-xs text-orange-700">Comissão (7%)</p>
+              <p className="text-xl font-bold text-orange-700">
+                R$ {((selectedBusiness?.total_sales || 0) * 0.07).toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Orders List */}
+          <ScrollArea className="flex-1 pr-4">
+            {loadingOrders ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : businessOrders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Package className="w-12 h-12 mb-3 opacity-50" />
+                <p>Nenhum pedido encontrado</p>
+              </div>
+            ) : (
+              <div className="space-y-3 py-4">
+                {businessOrders.map((order) => {
+                  const statusConfig = ORDER_STATUS_CONFIG[order.status] || ORDER_STATUS_CONFIG.pending;
+                  return (
+                    <div 
+                      key={order.id} 
+                      className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowOrderDetailDialog(true);
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={order.customer?.avatar_url || ''} />
+                            <AvatarFallback className="bg-primary/10">
+                              {order.customer?.full_name?.[0] || 'C'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{order.customer?.full_name || 'Cliente'}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="font-mono">{order.order_number}</span>
+                              <span>•</span>
+                              <span>{format(new Date(order.created_at), "dd/MM HH:mm")}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {order.wants_delivery && (
+                            <Badge variant="outline" className="gap-1">
+                              <Truck className="w-3 h-3" />
+                              Delivery
+                            </Badge>
+                          )}
+                          <Badge className={`${statusConfig.bgColor} ${statusConfig.color} border-0`}>
+                            {statusConfig.label}
+                          </Badge>
+                          <div className="text-right">
+                            <p className="font-bold">R$ {order.total.toFixed(2)}</p>
+                            {order.status === 'delivered' && (
+                              <p className="text-xs text-orange-600">
+                                7%: R$ {(order.total * 0.07).toFixed(2)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Order Items Preview */}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {order.items?.slice(0, 3).map((item, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {item.quantity}x {item.product_name}
+                          </Badge>
+                        ))}
+                        {order.items && order.items.length > 3 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{order.items.length - 3} itens
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Order Detail Dialog */}
+      <Dialog open={showOrderDetailDialog} onOpenChange={setShowOrderDetailDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Pedido</DialogTitle>
+            <DialogDescription>
+              {selectedOrder?.order_number} - {selectedOrder && format(new Date(selectedOrder.created_at), "dd/MM/yyyy 'às' HH:mm")}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="space-y-6">
+              {/* Customer Info */}
+              <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={selectedOrder.customer?.avatar_url || ''} />
+                  <AvatarFallback>{selectedOrder.customer?.full_name?.[0] || 'C'}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold">{selectedOrder.customer?.full_name}</p>
+                  <p className="text-sm text-muted-foreground">@{selectedOrder.customer?.username}</p>
+                </div>
+                <Badge className={`ml-auto ${ORDER_STATUS_CONFIG[selectedOrder.status]?.bgColor} ${ORDER_STATUS_CONFIG[selectedOrder.status]?.color} border-0`}>
+                  {ORDER_STATUS_CONFIG[selectedOrder.status]?.label}
+                </Badge>
+              </div>
+
+              {/* Delivery Info */}
+              {selectedOrder.wants_delivery && (selectedOrder.delivery_address || selectedOrder.delivery_street) && (
+                <div className="p-4 rounded-lg border bg-blue-50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Truck className="w-4 h-4 text-blue-600" />
+                    <h4 className="font-medium text-blue-900">Endereço de Entrega</h4>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div>
+                      {selectedOrder.delivery_street && selectedOrder.delivery_number ? (
+                        <p>{selectedOrder.delivery_street}, {selectedOrder.delivery_number}</p>
+                      ) : (
+                        <p>{selectedOrder.delivery_address}</p>
+                      )}
+                      {selectedOrder.customer_neighborhood && (
+                        <Badge variant="outline" className="mt-1">{selectedOrder.customer_neighborhood}</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Items */}
+              <div className="rounded-lg border overflow-hidden">
+                <div className="bg-muted/50 px-4 py-3 flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  <h4 className="font-medium">Itens do Pedido</h4>
+                </div>
+                <div className="divide-y">
+                  {selectedOrder.items?.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-sm text-primary">
+                          {item.quantity}x
+                        </div>
+                        <span>{item.product_name}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">R$ {(item.product_price * item.quantity).toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">R$ {item.product_price.toFixed(2)} un.</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Payment Summary */}
+              <div className="rounded-lg border bg-gradient-to-br from-primary/5 to-background p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <CreditCard className="w-4 h-4" />
+                  <h4 className="font-medium">Resumo do Pagamento</h4>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>R$ {selectedOrder.subtotal.toFixed(2)}</span>
+                </div>
+                {selectedOrder.delivery_fee && selectedOrder.delivery_fee > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Taxa de Entrega</span>
+                    <span>R$ {selectedOrder.delivery_fee.toFixed(2)}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="font-bold">Total</span>
+                  <span className="font-bold text-xl text-primary">R$ {selectedOrder.total.toFixed(2)}</span>
+                </div>
+                {selectedOrder.status === 'delivered' && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-between text-orange-600">
+                      <span className="font-medium">Comissão Plataforma (7%)</span>
+                      <span className="font-bold">R$ {(selectedOrder.total * 0.07).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Receipt Dialog */}
       <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
@@ -466,40 +914,40 @@ export default function AdminCommissions() {
           <DialogHeader>
             <DialogTitle>Comprovante de Pagamento</DialogTitle>
             <DialogDescription>
-              {selectedCommission?.business.business_name} - {selectedCommission && formatMonthYear(selectedCommission.month_year)}
+              {selectedBusiness?.business_name} - {selectedBusiness?.commission && formatMonthYear(selectedBusiness.commission.month_year)}
             </DialogDescription>
           </DialogHeader>
 
-          {selectedCommission && (
+          {selectedBusiness?.commission && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                 <div>
                   <p className="text-xs text-muted-foreground">Valor da Comissão</p>
-                  <p className="text-xl font-bold">R$ {selectedCommission.commission_amount.toFixed(2)}</p>
+                  <p className="text-xl font-bold">R$ {selectedBusiness.commission.commission_amount.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Enviado em</p>
                   <p className="font-medium">
-                    {selectedCommission.receipt_uploaded_at && 
-                      format(new Date(selectedCommission.receipt_uploaded_at), "dd/MM/yyyy 'às' HH:mm")}
+                    {selectedBusiness.commission.receipt_uploaded_at && 
+                      format(new Date(selectedBusiness.commission.receipt_uploaded_at), "dd/MM/yyyy 'às' HH:mm")}
                   </p>
                 </div>
               </div>
 
-              {selectedCommission.receipt_url && (
+              {selectedBusiness.commission.receipt_url && (
                 <div className="border rounded-lg overflow-hidden">
-                  {selectedCommission.receipt_url.endsWith('.pdf') ? (
+                  {selectedBusiness.commission.receipt_url.endsWith('.pdf') ? (
                     <div className="p-8 text-center">
                       <Receipt className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground mb-3">Arquivo PDF</p>
-                      <Button onClick={() => window.open(selectedCommission.receipt_url!, '_blank')}>
+                      <Button onClick={() => window.open(selectedBusiness.commission!.receipt_url!, '_blank')}>
                         <ExternalLink className="w-4 h-4 mr-2" />
                         Abrir PDF
                       </Button>
                     </div>
                   ) : (
                     <img 
-                      src={selectedCommission.receipt_url} 
+                      src={selectedBusiness.commission.receipt_url} 
                       alt="Comprovante" 
                       className="w-full max-h-96 object-contain"
                     />
@@ -507,7 +955,7 @@ export default function AdminCommissions() {
                 </div>
               )}
 
-              {selectedCommission.status === 'awaiting_confirmation' && (
+              {selectedBusiness.commission.status === 'awaiting_confirmation' && (
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setShowReceiptDialog(false)}>
                     Fechar
@@ -532,9 +980,9 @@ export default function AdminCommissions() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
             <AlertDialogDescription>
-              Confirmar que a empresa <strong>{selectedCommission?.business.business_name}</strong> pagou a comissão de{' '}
-              <strong>R$ {selectedCommission?.commission_amount.toFixed(2)}</strong> referente a{' '}
-              <strong>{selectedCommission && formatMonthYear(selectedCommission.month_year)}</strong>?
+              Confirmar que a empresa <strong>{selectedBusiness?.business_name}</strong> pagou a comissão de{' '}
+              <strong>R$ {selectedBusiness?.commission?.commission_amount.toFixed(2)}</strong> referente a{' '}
+              <strong>{selectedBusiness?.commission && formatMonthYear(selectedBusiness.commission.month_year)}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
