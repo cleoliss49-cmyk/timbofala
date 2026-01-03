@@ -114,7 +114,16 @@ export default function Business() {
       if (businessError) throw businessError;
       
       if (!businessData) {
-        navigate('/empresas');
+        // Business not found
+        setBusiness(null);
+        setLoading(false);
+        return;
+      }
+
+      // Check if business is inactive
+      if (!businessData.is_active) {
+        setBusiness(null);
+        setLoading(false);
         return;
       }
 
@@ -221,10 +230,17 @@ export default function Business() {
   if (!business) {
     return (
       <MainLayout>
-        <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-          <Store className="w-16 h-16 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Loja não encontrada</h2>
-          <Button onClick={() => navigate('/empresas')}>Ver todas as lojas</Button>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-4">
+          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
+            <Store className="w-10 h-10 text-muted-foreground" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Loja Indisponível</h2>
+          <p className="text-muted-foreground text-center mb-6 max-w-md">
+            Esta loja não está mais disponível ou foi removida pelo proprietário.
+          </p>
+          <Button onClick={() => navigate('/empresas')} size="lg">
+            Ver outras lojas
+          </Button>
         </div>
       </MainLayout>
     );

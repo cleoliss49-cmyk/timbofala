@@ -18,13 +18,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { BusinessDashboard } from '@/components/business/BusinessDashboard';
 import { StoreHoursEditor } from '@/components/business/StoreHoursEditor';
-import { OrderChat } from '@/components/business/OrderChat';
+import { OrderDetailsDialog } from '@/components/business/OrderDetailsDialog';
+import { DeleteBusinessDialog } from '@/components/business/DeleteBusinessDialog';
 import { 
   Package, Plus, Edit, Trash2, Eye, ExternalLink, 
   Upload, Loader2, ShoppingBag, Clock, CheckCircle, 
   XCircle, Truck, Store, BarChart3, Settings, Calendar,
   MessageCircle, Receipt, DollarSign, Users, Zap, TrendingUp,
-  AlertCircle, Phone
+  AlertCircle, Phone, AlertTriangle, Pencil
 } from 'lucide-react';
 import {
   Dialog,
@@ -144,7 +145,10 @@ export default function BusinessManage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
-  const [orderTab, setOrderTab] = useState<'details' | 'chat'>('details');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditNameDialog, setShowEditNameDialog] = useState(false);
+  const [newBusinessName, setNewBusinessName] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   const [productForm, setProductForm] = useState({
     name: '',
@@ -504,6 +508,62 @@ export default function BusinessManage() {
     setShowReceiptDialog(true);
   };
 
+  const handleSaveBusinessName = async () => {
+    if (!newBusinessName.trim()) {
+      toast({
+        title: 'Nome inválido',
+        description: 'Digite um nome para sua loja',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setSavingName(true);
+    try {
+      const { error } = await supabase
+        .from('business_profiles')
+        .update({ business_name: newBusinessName.trim() })
+        .eq('id', business!.id);
+
+      if (error) throw error;
+
+      setBusiness(prev => prev ? { ...prev, business_name: newBusinessName.trim() } : null);
+      setShowEditNameDialog(false);
+      toast({ title: 'Nome atualizado com sucesso!' });
+    } catch (error) {
+      console.error('Error updating business name:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar o nome',
+        variant: 'destructive'
+      });
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const handleDeleteBusiness = async () => {
+    try {
+      const { error } = await supabase
+        .from('business_profiles')
+        .update({ is_active: false })
+        .eq('id', business!.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Loja excluída com sucesso' });
+      navigate('/empresas');
+    } catch (error) {
+      console.error('Error deleting business:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível excluir a loja',
+        variant: 'destructive'
+      });
+      throw error;
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <MainLayout>
@@ -728,7 +788,7 @@ export default function BusinessManage() {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => { setSelectedOrder(order); setOrderTab('details'); }}
+                              onClick={() => setSelectedOrder(order)}
                             >
                               Detalhes
                             </Button>
@@ -888,11 +948,92 @@ export default function BusinessManage() {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
+            {/* Store Name Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="w-5 h-5" />
+                  Informações da Loja
+                </CardTitle>
+                <CardDescription>Configure os dados básicos da sua loja</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Nome da Loja</Label>
+                    <p className="font-semibold text-lg">{business.business_name}</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setNewBusinessName(business.business_name);
+                      setShowEditNameDialog(true);
+                    }}
+                    className="gap-2"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Alterar Nome
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Link da Loja</Label>
+                    <p className="font-mono text-sm">/empresa/{business.slug}</p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    asChild
+                  >
+                    <Link to={`/empresa/${business.slug}`} className="gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      Visitar
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Store Hours */}
             <StoreHoursEditor 
               businessId={business.id}
               initialHours={business.opening_hours}
               onSave={() => fetchBusiness()}
             />
+
+            {/* Danger Zone */}
+            <Card className="border-destructive/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="w-5 h-5" />
+                  Zona de Perigo
+                </CardTitle>
+                <CardDescription>
+                  Ações irreversíveis - tenha cuidado
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 border border-destructive/30 rounded-lg bg-destructive/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <h4 className="font-semibold text-destructive">Excluir Comércio</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Sua loja ficará indisponível. Pedidos anteriores continuarão visíveis para os clientes.
+                      </p>
+                    </div>
+                    <Button 
+                      variant="destructive"
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="gap-2 shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Excluir Comércio
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
@@ -1130,200 +1271,15 @@ export default function BusinessManage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Order Details Dialog */}
-        <Dialog open={!!selectedOrder} onOpenChange={() => { setSelectedOrder(null); setOrderTab('details'); }}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0">
-            {selectedOrder && (
-              <>
-                {/* Header */}
-                <div className="p-6 border-b">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-mono text-sm text-muted-foreground">{selectedOrder.order_number}</p>
-                      <h3 className="text-lg font-bold">{selectedOrder.customer.full_name}</h3>
-                    </div>
-                    <Badge className={`${getStatusInfo(selectedOrder.status).color} text-white border-0`}>
-                      {getStatusInfo(selectedOrder.status).label}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="border-b px-6">
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => setOrderTab('details')}
-                      className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                        orderTab === 'details' 
-                          ? 'border-primary text-primary' 
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      Detalhes
-                    </button>
-                    <button
-                      onClick={() => setOrderTab('chat')}
-                      className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                        orderTab === 'chat' 
-                          ? 'border-primary text-primary' 
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      Chat
-                    </button>
-                  </div>
-                </div>
-
-                <ScrollArea className="flex-1 p-6">
-                  {orderTab === 'details' ? (
-                    <div className="space-y-4">
-                      {/* Customer Contact */}
-                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={selectedOrder.customer.avatar_url || ''} />
-                            <AvatarFallback>{selectedOrder.customer.full_name[0]}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{selectedOrder.customer.full_name}</p>
-                            {selectedOrder.customer_phone && (
-                              <p className="text-sm text-muted-foreground">{selectedOrder.customer_phone}</p>
-                            )}
-                          </div>
-                        </div>
-                        {selectedOrder.customer_phone && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className="gap-2 border-green-500 text-green-600"
-                            onClick={() => {
-                              const phone = selectedOrder.customer_phone?.replace(/\D/g, '');
-                              const message = encodeURIComponent(
-                                `Olá! Sobre seu pedido ${selectedOrder.order_number} em nossa loja.`
-                              );
-                              window.open(`https://wa.me/55${phone}?text=${message}`, '_blank');
-                            }}
-                          >
-                            <Phone className="w-4 h-4" />
-                            WhatsApp
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Receipt Alert */}
-                      {selectedOrder.payment_status === 'pending_confirmation' && selectedOrder.receipt_url && (
-                        <Card className="border-blue-200 bg-blue-50">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Receipt className="w-5 h-5 text-blue-600" />
-                                <span className="font-medium text-blue-700">Comprovante enviado</span>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => viewReceipt(selectedOrder.receipt_url!)}
-                                >
-                                  <Eye className="w-4 h-4 mr-1" />
-                                  Ver
-                                </Button>
-                                <Button 
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700"
-                                  onClick={() => updatePaymentStatus(selectedOrder.id, 'confirmed')}
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-1" />
-                                  Confirmar
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Delivery Info */}
-                      {selectedOrder.wants_delivery && selectedOrder.delivery_address && (
-                        <div className="p-3 border rounded-lg">
-                          <div className="flex items-start gap-3">
-                            <Truck className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium">Endereço de Entrega</p>
-                              <p className="text-sm text-muted-foreground">{selectedOrder.delivery_address}</p>
-                              {selectedOrder.customer_neighborhood && (
-                                <Badge variant="outline" className="mt-1 text-xs">
-                                  {selectedOrder.customer_neighborhood}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Notes */}
-                      {selectedOrder.customer_notes && (
-                        <div className="p-3 border rounded-lg">
-                          <p className="text-sm font-medium">Observações</p>
-                          <p className="text-sm text-muted-foreground">{selectedOrder.customer_notes}</p>
-                        </div>
-                      )}
-
-                      {/* Items */}
-                      <div>
-                        <p className="text-sm font-medium mb-2">Itens do Pedido</p>
-                        <div className="space-y-2">
-                          {selectedOrder.items?.map((item, index) => (
-                            <div key={index} className="flex justify-between text-sm p-2 bg-muted/30 rounded">
-                              <span>{item.quantity}x {item.product_name}</span>
-                              <span className="font-medium">R$ {(item.product_price * item.quantity).toFixed(2)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Totals */}
-                      <div className="border-t pt-3 space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span>Subtotal</span>
-                          <span>R$ {selectedOrder.subtotal.toFixed(2)}</span>
-                        </div>
-                        {selectedOrder.delivery_fee && selectedOrder.delivery_fee > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span>Entrega</span>
-                            <span>R$ {selectedOrder.delivery_fee.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <Separator />
-                        <div className="flex justify-between font-bold text-lg">
-                          <span>Total</span>
-                          <span className="text-primary">R$ {selectedOrder.total.toFixed(2)}</span>
-                        </div>
-                      </div>
-
-                      {/* Payment Info */}
-                      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                        <span className="text-sm">Forma de Pagamento</span>
-                        <Badge variant="secondary">
-                          {PAYMENT_LABELS[selectedOrder.payment_method || 'pix'] || selectedOrder.payment_method}
-                        </Badge>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Chat Tab */
-                    <OrderChat
-                      orderId={selectedOrder.id}
-                      businessName={business.business_name}
-                      customerName={selectedOrder.customer.full_name}
-                      customerAvatar={selectedOrder.customer.avatar_url}
-                      isBusinessView={true}
-                    />
-                  )}
-                </ScrollArea>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
+        {/* Order Details Dialog - New Professional UI */}
+        <OrderDetailsDialog
+          order={selectedOrder}
+          open={!!selectedOrder}
+          onOpenChange={(open) => !open && setSelectedOrder(null)}
+          businessName={business.business_name}
+          onViewReceipt={viewReceipt}
+          onConfirmPayment={(orderId) => updatePaymentStatus(orderId, 'confirmed')}
+        />
 
         {/* Receipt Dialog */}
         <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
@@ -1333,15 +1289,73 @@ export default function BusinessManage() {
             </DialogHeader>
             {receiptUrl && (
               <div className="flex justify-center">
-                <img 
-                  src={receiptUrl} 
-                  alt="Comprovante" 
-                  className="max-h-[70vh] object-contain rounded-lg"
-                />
+                {receiptUrl.toLowerCase().endsWith('.pdf') ? (
+                  <div className="w-full text-center space-y-4">
+                    <p className="text-muted-foreground">Arquivo PDF</p>
+                    <Button asChild>
+                      <a href={receiptUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Abrir PDF
+                      </a>
+                    </Button>
+                  </div>
+                ) : (
+                  <img 
+                    src={receiptUrl} 
+                    alt="Comprovante" 
+                    className="max-h-[70vh] object-contain rounded-lg"
+                  />
+                )}
               </div>
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Edit Business Name Dialog */}
+        <Dialog open={showEditNameDialog} onOpenChange={setShowEditNameDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Alterar Nome da Loja</DialogTitle>
+              <DialogDescription>
+                Digite o novo nome para sua loja/empresa.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="new_name">Novo Nome</Label>
+                <Input
+                  id="new_name"
+                  value={newBusinessName}
+                  onChange={(e) => setNewBusinessName(e.target.value)}
+                  placeholder="Nome da loja"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditNameDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveBusinessName} disabled={savingName}>
+                {savingName ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Business Dialog */}
+        <DeleteBusinessDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          businessName={business.business_name}
+          onConfirmDelete={handleDeleteBusiness}
+        />
       </div>
     </MainLayout>
   );
