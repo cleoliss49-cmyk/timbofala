@@ -58,6 +58,7 @@ interface BusinessProfile {
   pix_key_type: string | null;
   pix_holder_name: string | null;
   opening_hours?: any;
+  estimated_prep_time_minutes: number | null;
 }
 
 interface Product {

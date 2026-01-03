@@ -514,6 +514,7 @@ export type Database = {
           delivery_fee: number | null
           description: string | null
           email: string | null
+          estimated_prep_time_minutes: number | null
           facebook: string | null
           id: string
           instagram: string | null
@@ -544,6 +545,7 @@ export type Database = {
           delivery_fee?: number | null
           description?: string | null
           email?: string | null
+          estimated_prep_time_minutes?: number | null
           facebook?: string | null
           id?: string
           instagram?: string | null
@@ -574,6 +576,7 @@ export type Database = {
           delivery_fee?: number | null
           description?: string | null
           email?: string | null
+          estimated_prep_time_minutes?: number | null
           facebook?: string | null
           id?: string
           instagram?: string | null

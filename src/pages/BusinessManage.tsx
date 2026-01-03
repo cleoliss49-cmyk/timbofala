@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { BusinessDashboard } from '@/components/business/BusinessDashboard';
 import { StoreHoursEditor } from '@/components/business/StoreHoursEditor';
+import { EstimatedTimeEditor } from '@/components/business/EstimatedTimeEditor';
 import { OrderDetailsDialog } from '@/components/business/OrderDetailsDialog';
 import { DeleteBusinessDialog } from '@/components/business/DeleteBusinessDialog';
 import { 
@@ -63,6 +64,7 @@ interface BusinessProfile {
   offers_delivery: boolean;
   is_verified: boolean;
   opening_hours: any;
+  estimated_prep_time_minutes: number | null;
 }
 
 interface Product {
@@ -820,7 +822,7 @@ export default function BusinessManage() {
                             </>
                           )}
                           
-                          {/* Reject Order Button - visible for pending orders */}
+                          {/* Reject Order Button - visible for pending orders only */}
                           {order.status === 'pending' && (
                             <Button
                               size="sm"
@@ -833,7 +835,8 @@ export default function BusinessManage() {
                             </Button>
                           )}
                           
-                          {ORDER_STATUS.filter(s => 
+                          {/* Hide status buttons for rejected or cancelled orders */}
+                          {!['rejected', 'cancelled'].includes(order.status) && ORDER_STATUS.filter(s => 
                             !['cancelled', 'awaiting_payment', 'pending_confirmation', 'rejected'].includes(s.value)
                           ).map(status => (
                             <Button
@@ -992,6 +995,24 @@ export default function BusinessManage() {
                     </Link>
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Estimated Time */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Tempo Estimado
+                </CardTitle>
+                <CardDescription>Configure o tempo médio de preparo ou entrega</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EstimatedTimeEditor 
+                  businessId={business.id}
+                  initialTime={business.estimated_prep_time_minutes}
+                  onSave={() => fetchBusiness()}
+                />
               </CardContent>
             </Card>
 

@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { OrderChat } from '@/components/business/OrderChat';
+import { CountdownTimer } from '@/components/business/CountdownTimer';
 import {
   Dialog,
   DialogContent,
@@ -139,7 +140,7 @@ export default function MyOrders() {
         (ordersData || []).map(async (order) => {
           const { data: business } = await supabase
             .from('business_profiles')
-            .select('id, business_name, slug, logo_url, whatsapp, pix_key, pix_key_type, pix_holder_name')
+            .select('id, business_name, slug, logo_url, whatsapp, pix_key, pix_key_type, pix_holder_name, estimated_prep_time_minutes')
             .eq('id', order.business_id)
             .single();
 
@@ -151,7 +152,7 @@ export default function MyOrders() {
           return {
             ...order,
             receipt_url: (order as any).receipt_url || null,
-            estimated_time_minutes: (order as any).estimated_time_minutes || null,
+            estimated_time_minutes: business?.estimated_prep_time_minutes || null,
             business: business || { id: '', business_name: 'Loja', slug: '', logo_url: null, whatsapp: null, pix_key: null, pix_key_type: null, pix_holder_name: null },
             items: items || []
           } as Order;
@@ -505,15 +506,47 @@ export default function MyOrders() {
                         </Card>
                       )}
 
-                      {/* Estimated Time */}
-                      {selectedOrder.estimated_time_minutes && !['delivered', 'cancelled'].includes(selectedOrder.status) && (
-                        <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl">
-                          <Timer className="w-5 h-5 text-primary" />
+                      {/* Countdown Timer for active orders with confirmed status */}
+                      {selectedOrder.estimated_time_minutes && 
+                       ['confirmed', 'preparing', 'ready'].includes(selectedOrder.status) && (
+                        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                          <CardContent className="p-4">
+                            <CountdownTimer
+                              startTime={selectedOrder.updated_at}
+                              estimatedMinutes={selectedOrder.estimated_time_minutes}
+                              status={selectedOrder.status}
+                            />
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Estimated Time for pending orders */}
+                      {selectedOrder.estimated_time_minutes && 
+                       ['pending', 'awaiting_payment', 'pending_confirmation'].includes(selectedOrder.status) && (
+                        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                          <Timer className="w-5 h-5 text-muted-foreground" />
                           <div>
-                            <p className="text-sm font-medium">Tempo estimado</p>
+                            <p className="text-sm font-medium">Tempo estimado após confirmação</p>
                             <p className="text-xs text-muted-foreground">
                               Aproximadamente {selectedOrder.estimated_time_minutes} minutos
                             </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Rejected order notice */}
+                      {selectedOrder.status === 'rejected' && (
+                        <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                              <XCircle className="w-5 h-5 text-orange-600" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-orange-800">Pedido Rejeitado</p>
+                              <p className="text-sm text-orange-700">
+                                Este pedido foi rejeitado pela loja. Entre em contato para mais informações.
+                              </p>
+                            </div>
                           </div>
                         </div>
                       )}
