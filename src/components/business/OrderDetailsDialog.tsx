@@ -260,6 +260,21 @@ export function OrderDetailsDialog({
                 </div>
               )}
 
+              {/* PIX without receipt - waiting for customer to upload */}
+              {isPix && !hasReceipt && !['delivered', 'cancelled', 'rejected'].includes(order.status) && (
+                <div className="rounded-xl border-2 border-amber-200 bg-gradient-to-r from-amber-50 to-amber-100/50 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-amber-900">Aguardando Comprovante PIX</h4>
+                      <p className="text-sm text-amber-700">O cliente ainda não enviou o comprovante de pagamento</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Customer Contact Card */}
               <div className="rounded-xl border bg-gradient-to-br from-background to-muted/20 p-4">
                 <div className="flex items-center gap-2 mb-3">
