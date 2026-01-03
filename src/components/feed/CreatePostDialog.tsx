@@ -399,7 +399,12 @@ export function CreatePostDialog({ open, onOpenChange, onPostCreated }: CreatePo
                 />
               </label>
               <Button
-                onClick={handleSubmit}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSubmit();
+                }}
                 disabled={isSubmitting || !canSubmit()}
                 className="gradient-primary text-white px-6"
               >

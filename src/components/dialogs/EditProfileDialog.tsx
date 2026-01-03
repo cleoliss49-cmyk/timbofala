@@ -149,9 +149,19 @@ export function EditProfileDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    e.stopPropagation();
+    
+    if (!user) {
+      toast({
+        title: 'Erro',
+        description: 'Usuário não autenticado',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setLoading(true);
+    console.log('Starting profile update...');
 
     try {
       let avatarUrl = profile?.avatar_url;
@@ -195,7 +205,9 @@ export function EditProfileDialog({
         ? formData.languages.split(',').map(l => l.trim()).filter(Boolean)
         : null;
 
-      const { error } = await supabase
+      console.log('Updating profile for user:', user.id);
+      
+      const { data, error } = await supabase
         .from('profiles')
         .update({
           full_name: formData.full_name,
@@ -221,7 +233,10 @@ export function EditProfileDialog({
           show_education: formData.show_education,
           show_profession: formData.show_profession,
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select();
+
+      console.log('Profile update result:', { data, error });
 
       if (error) throw error;
 

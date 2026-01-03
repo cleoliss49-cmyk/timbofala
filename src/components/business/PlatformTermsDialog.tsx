@@ -22,8 +22,14 @@ interface PlatformTermsDialogProps {
 export function PlatformTermsDialog({ open, onAccept, onDecline }: PlatformTermsDialogProps) {
   const [accepted, setAccepted] = useState(false);
 
+  const handleAccept = () => {
+    if (accepted) {
+      onAccept();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onDecline(); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -160,10 +166,10 @@ export function PlatformTermsDialog({ open, onAccept, onDecline }: PlatformTerms
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={onDecline}>
+            <Button type="button" variant="outline" onClick={onDecline}>
               Não aceito
             </Button>
-            <Button onClick={onAccept} disabled={!accepted}>
+            <Button type="button" onClick={handleAccept} disabled={!accepted}>
               Aceitar e Continuar
             </Button>
           </DialogFooter>

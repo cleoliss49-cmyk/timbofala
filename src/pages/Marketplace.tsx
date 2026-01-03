@@ -221,7 +221,22 @@ export default function Marketplace() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    e.stopPropagation();
+    
+    if (!user) {
+      toast({ title: 'Faça login para anunciar', variant: 'destructive' });
+      return;
+    }
+
+    if (!formData.title.trim()) {
+      toast({ title: 'Preencha o título do anúncio', variant: 'destructive' });
+      return;
+    }
+
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      toast({ title: 'Informe um preço válido', variant: 'destructive' });
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -654,8 +669,17 @@ export default function Marketplace() {
                         </div>
                       )}
                     </div>
-                    <Button type="submit" disabled={submitting} className="w-full gradient-premium text-white">
-                      {submitting ? 'Salvando...' : (editingProduct ? 'Salvar Alterações' : 'Publicar Anúncio')}
+                    <Button 
+                      type="submit" 
+                      disabled={submitting || !formData.title.trim() || !formData.price} 
+                      className="w-full gradient-premium text-white"
+                    >
+                      {submitting ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          Salvando...
+                        </>
+                      ) : (editingProduct ? 'Salvar Alterações' : 'Publicar Anúncio')}
                     </Button>
                   </form>
                 </DialogContent>
