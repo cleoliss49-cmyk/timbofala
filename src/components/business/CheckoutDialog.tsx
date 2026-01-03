@@ -31,6 +31,7 @@ import {
   Truck, MapPin, MessageCircle, AlertCircle
 } from 'lucide-react';
 import { PixPaymentDialog } from './PixPaymentDialog';
+import { TIMBO_NEIGHBORHOODS } from '@/lib/neighborhoods';
 
 interface DeliveryZone {
   id: string;
@@ -98,8 +99,10 @@ export function CheckoutDialog({
   
   const [formData, setFormData] = useState({
     whatsapp: '',
-    address: '',
     neighborhood: '',
+    street: '',
+    number: '',
+    reference: '',
     notes: '',
     payment_method: 'cash',
     wants_delivery: false
@@ -187,19 +190,38 @@ export function CheckoutDialog({
       return;
     }
 
-    if (formData.wants_delivery && !formData.address) {
+    if (formData.wants_delivery && !formData.street) {
       toast({
-        title: 'Endereço obrigatório',
-        description: 'Por favor, informe o endereço completo de entrega',
+        title: 'Rua obrigatória',
+        description: 'Por favor, informe a rua para entrega',
         variant: 'destructive'
       });
       return;
     }
 
-    if (formData.wants_delivery && deliveryZones.length > 0 && !formData.neighborhood) {
+    if (formData.wants_delivery && !formData.number) {
+      toast({
+        title: 'Número obrigatório',
+        description: 'Por favor, informe o número do endereço',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (formData.wants_delivery && !formData.neighborhood) {
       toast({
         title: 'Bairro obrigatório',
-        description: 'Por favor, selecione seu bairro para calcular a entrega',
+        description: 'Por favor, selecione seu bairro',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate neighborhood is a valid Timbó neighborhood
+    if (formData.wants_delivery && !TIMBO_NEIGHBORHOODS.includes(formData.neighborhood as any)) {
+      toast({
+        title: 'Bairro inválido',
+        description: 'Por favor, selecione um bairro válido de Timbó',
         variant: 'destructive'
       });
       return;
@@ -208,6 +230,11 @@ export function CheckoutDialog({
     setSubmitting(true);
     try {
       const newOrderNumber = 'TF' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      
+      // Build full address from parts
+      const fullAddress = formData.wants_delivery 
+        ? `${formData.street}, ${formData.number}${formData.reference ? ` - ${formData.reference}` : ''}`
+        : null;
       
       const { data: order, error: orderError } = await supabase
         .from('business_orders')
@@ -219,7 +246,10 @@ export function CheckoutDialog({
           delivery_fee: calculateDeliveryFee(),
           total: calculateTotal(),
           wants_delivery: formData.wants_delivery,
-          delivery_address: formData.wants_delivery ? formData.address : null,
+          delivery_address: fullAddress,
+          delivery_street: formData.wants_delivery ? formData.street : null,
+          delivery_number: formData.wants_delivery ? formData.number : null,
+          delivery_reference: formData.wants_delivery ? formData.reference : null,
           customer_phone: formData.whatsapp,
           customer_notes: formData.notes || null,
           customer_neighborhood: formData.neighborhood || null,
@@ -342,38 +372,65 @@ export function CheckoutDialog({
 
             {/* Delivery Address */}
             {formData.wants_delivery && (
-              <div className="space-y-4">
-                {deliveryZones.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="neighborhood" className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Bairro *
-                    </Label>
-                    <Select
-                      value={formData.neighborhood}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, neighborhood: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione seu bairro" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {deliveryZones.map((zone) => (
+              <div className="space-y-4 p-4 bg-muted/30 rounded-xl border">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Bairro *
+                  </Label>
+                  <Select
+                    value={formData.neighborhood}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, neighborhood: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione seu bairro" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deliveryZones.length > 0 ? (
+                        deliveryZones.map((zone) => (
                           <SelectItem key={zone.id} value={zone.neighborhood}>
                             {zone.neighborhood} - R$ {zone.delivery_fee.toFixed(2)}
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        ))
+                      ) : (
+                        TIMBO_NEIGHBORHOODS.map((neighborhood) => (
+                          <SelectItem key={neighborhood} value={neighborhood}>
+                            {neighborhood}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="street">Rua *</Label>
+                    <Input
+                      id="street"
+                      placeholder="Nome da rua"
+                      value={formData.street}
+                      onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
+                    />
                   </div>
-                )}
+                  <div className="space-y-2">
+                    <Label htmlFor="number">Nº *</Label>
+                    <Input
+                      id="number"
+                      placeholder="123"
+                      value={formData.number}
+                      onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
+                    />
+                  </div>
+                </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="address">Endereço completo *</Label>
-                  <Textarea
-                    id="address"
-                    placeholder="Rua, número, complemento..."
-                    value={formData.address}
-                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  <Label htmlFor="reference">Ponto de referência (opcional)</Label>
+                  <Input
+                    id="reference"
+                    placeholder="Ex: Próximo ao mercado, casa azul..."
+                    value={formData.reference}
+                    onChange={(e) => setFormData(prev => ({ ...prev, reference: e.target.value }))}
                   />
                 </div>
               </div>

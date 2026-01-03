@@ -321,6 +321,9 @@ export type Database = {
           customer_phone: string | null
           delivery_address: string | null
           delivery_fee: number | null
+          delivery_number: string | null
+          delivery_reference: string | null
+          delivery_street: string | null
           discount_amount: number | null
           id: string
           order_number: string
@@ -346,6 +349,9 @@ export type Database = {
           customer_phone?: string | null
           delivery_address?: string | null
           delivery_fee?: number | null
+          delivery_number?: string | null
+          delivery_reference?: string | null
+          delivery_street?: string | null
           discount_amount?: number | null
           id?: string
           order_number: string
@@ -371,6 +377,9 @@ export type Database = {
           customer_phone?: string | null
           delivery_address?: string | null
           delivery_fee?: number | null
+          delivery_number?: string | null
+          delivery_reference?: string | null
+          delivery_street?: string | null
           discount_amount?: number | null
           id?: string
           order_number?: string
