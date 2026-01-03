@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { StoreHoursIndicator } from '@/components/business/StoreHoursIndicator';
 import { 
   Store, MapPin, Phone, Mail, Globe, Clock, Truck, 
   ShoppingCart, Plus, Minus, MessageCircle, Instagram, 
@@ -56,6 +57,7 @@ interface BusinessProfile {
   pix_key: string | null;
   pix_key_type: string | null;
   pix_holder_name: string | null;
+  opening_hours?: any;
 }
 
 interface Product {
@@ -267,6 +269,7 @@ export default function Business() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
                   <Badge variant="secondary">{business.category}</Badge>
+                  <StoreHoursIndicator openingHours={business.opening_hours || null} size="sm" />
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
                     {business.neighborhood ? `${business.neighborhood}, ` : ''}{business.city}

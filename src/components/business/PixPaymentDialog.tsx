@@ -58,17 +58,23 @@ export function PixPaymentDialog({
   const [uploading, setUploading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
-  // Generate PIX code
+  // Generate PIX code (defensivo para evitar tela branca)
   const pixDescription = `${customerName.substring(0, 20)} Ped#${orderNumber.slice(-6)}`;
-  const pixCode = generatePixCode({
-    pixKey,
-    pixKeyType,
-    merchantName: holderName || businessName,
-    merchantCity: 'TIMBO',
-    amount: total,
-    txid: orderNumber.replace(/\D/g, '').slice(-10),
-    description: pixDescription
-  });
+  let pixCode = '';
+  try {
+    pixCode = generatePixCode({
+      pixKey,
+      pixKeyType,
+      merchantName: holderName || businessName,
+      merchantCity: 'TIMBO',
+      amount: total,
+      txid: orderNumber.replace(/\D/g, '').slice(-10) || '***',
+      description: pixDescription,
+    });
+  } catch (e) {
+    console.error('Error generating PIX code:', e);
+    pixCode = '';
+  }
 
   // Timer countdown
   useEffect(() => {
@@ -297,12 +303,16 @@ export function PixPaymentDialog({
 
           {/* QR Code */}
           <div className="flex justify-center p-4 bg-white rounded-xl border">
-            <QRCodeSVG 
-              value={pixCode} 
-              size={200}
-              level="M"
-              includeMargin
-            />
+            {pixCode ? (
+              <QRCodeSVG value={pixCode} size={200} level="M" includeMargin />
+            ) : (
+              <div className="text-center space-y-2">
+                <p className="text-sm font-medium">Não foi possível gerar o QR Code</p>
+                <p className="text-xs text-muted-foreground">
+                  Verifique a chave PIX da loja e tente novamente.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* PIX Key Info */}

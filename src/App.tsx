@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Feed from "./pages/Feed";
@@ -40,35 +41,37 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/feed" element={<Feed />} />
-            <Route path="/profile/:username" element={<Profile />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/messages/:recipientId" element={<Messages />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/community" element={<Community />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/saved" element={<Saved />} />
-            <Route path="/post/:postId" element={<Post />} />
-            <Route path="/paquera" element={<Paquera />} />
-            <Route path="/empresas" element={<Businesses />} />
-            <Route path="/empresa/criar" element={<BusinessSetup />} />
-            <Route path="/empresa/gerenciar" element={<BusinessManage />} />
-            <Route path="/empresa/pagamentos" element={<BusinessPaymentSettings />} />
-            <Route path="/empresa/:slug" element={<Business />} />
-            <Route path="/empresa/:businessSlug/produto/:productId" element={<BusinessProduct />} />
-            <Route path="/meus-pedidos" element={<MyOrders />} />
-            <Route path="/admtbo" element={<AdminAuth />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/feed" element={<Feed />} />
+              <Route path="/profile/:username" element={<Profile />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/messages/:recipientId" element={<Messages />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/community" element={<Community />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/marketplace" element={<Marketplace />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/saved" element={<Saved />} />
+              <Route path="/post/:postId" element={<Post />} />
+              <Route path="/paquera" element={<Paquera />} />
+              <Route path="/empresas" element={<Businesses />} />
+              <Route path="/empresa/criar" element={<BusinessSetup />} />
+              <Route path="/empresa/gerenciar" element={<BusinessManage />} />
+              <Route path="/empresa/pagamentos" element={<BusinessPaymentSettings />} />
+              <Route path="/empresa/:slug" element={<Business />} />
+              <Route path="/empresa/:businessSlug/produto/:productId" element={<BusinessProduct />} />
+              <Route path="/meus-pedidos" element={<MyOrders />} />
+              <Route path="/admtbo" element={<AdminAuth />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
