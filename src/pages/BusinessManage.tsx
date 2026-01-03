@@ -22,6 +22,7 @@ import { EstimatedTimeEditor } from '@/components/business/EstimatedTimeEditor';
 import { OrderDetailsDialog } from '@/components/business/OrderDetailsDialog';
 import { DeleteBusinessDialog } from '@/components/business/DeleteBusinessDialog';
 import { PlatformCommissionPanel } from '@/components/business/PlatformCommissionPanel';
+import { CommissionAlertButton } from '@/components/business/CommissionAlertButton';
 import { 
   Package, Plus, Edit, Trash2, Eye, ExternalLink, 
   Upload, Loader2, ShoppingBag, Clock, CheckCircle, 
@@ -615,7 +616,13 @@ export default function BusinessManage() {
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Commission Alert Button - Highly Visible */}
+            <CommissionAlertButton 
+              businessId={business.id}
+              businessName={business.business_name}
+            />
+            
             <Button variant="outline" asChild>
               <Link to={`/empresa/${business.slug}`}>
                 <Eye className="w-4 h-4 mr-2" />

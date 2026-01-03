@@ -42,7 +42,8 @@ import {
   DollarSign, Building2, Search, Eye, CheckCircle, 
   Clock, AlertTriangle, Receipt, TrendingUp, Users,
   Calendar, Loader2, ExternalLink, Package, FileText,
-  Truck, MapPin, CreditCard, Phone, ShoppingBag, ArrowLeft
+  Truck, MapPin, CreditCard, Phone, ShoppingBag, ArrowLeft,
+  Printer, Download
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -371,6 +372,119 @@ export default function AdminCommissions() {
       });
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (!selectedBusiness) return;
+    
+    const deliveredOrders = businessOrders.filter(o => o.status === 'delivered');
+    const totalSales = deliveredOrders.reduce((sum, o) => sum + o.total, 0);
+    const commission = totalSales * 0.07;
+    
+    const ordersHtml = businessOrders.map(order => {
+      const statusLabel = ORDER_STATUS_CONFIG[order.status]?.label || order.status;
+      const statusClass = order.status === 'delivered' ? 'delivered' : 
+                          (order.status === 'cancelled' || order.status === 'rejected') ? 'cancelled' : '';
+      const commissionValue = order.status === 'delivered' ? 'R$ ' + (order.total * 0.07).toFixed(2) : '-';
+      
+      return '<tr>' +
+        '<td>' + order.order_number + '</td>' +
+        '<td>' + (order.customer?.full_name || 'Cliente') + '</td>' +
+        '<td>' + format(new Date(order.created_at), "dd/MM HH:mm") + '</td>' +
+        '<td class="' + statusClass + '">' + statusLabel + '</td>' +
+        '<td style="text-align: right">R$ ' + order.total.toFixed(2) + '</td>' +
+        '<td style="text-align: right">' + commissionValue + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Relatório - ${selectedBusiness.business_name}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
+          h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; font-size: 20px; }
+          .header { margin-bottom: 20px; }
+          .stats { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+          .stat-box { padding: 15px; background: #f5f5f5; border-radius: 8px; text-align: center; flex: 1; min-width: 100px; }
+          .stat-value { font-size: 18px; font-weight: bold; color: #333; }
+          .stat-label { font-size: 10px; color: #666; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; font-size: 11px; }
+          th { background: #f5f5f5; font-weight: bold; }
+          .delivered { color: green; }
+          .cancelled { color: red; }
+          .total-row { font-weight: bold; background: #e8f5e9; }
+          .commission-row { font-weight: bold; background: #fff3e0; color: #e65100; }
+          .footer { margin-top: 30px; text-align: center; color: #666; font-size: 10px; border-top: 1px solid #ddd; padding-top: 15px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Relatório de Pedidos - ${selectedBusiness.business_name}</h1>
+          <p><strong>Período:</strong> ${currentMonth}</p>
+          <p><strong>Gerado em:</strong> ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}</p>
+        </div>
+        
+        <div class="stats">
+          <div class="stat-box">
+            <div class="stat-value">${businessOrders.length}</div>
+            <div class="stat-label">Total Pedidos</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${deliveredOrders.length}</div>
+            <div class="stat-label">Entregues</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">R$ ${totalSales.toFixed(2)}</div>
+            <div class="stat-label">Vendas</div>
+          </div>
+          <div class="stat-box" style="background: #fff3e0;">
+            <div class="stat-value" style="color: #e65100;">R$ ${commission.toFixed(2)}</div>
+            <div class="stat-label">Comissão (7%)</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Data</th>
+              <th>Status</th>
+              <th style="text-align: right">Valor</th>
+              <th style="text-align: right">Comissão</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ordersHtml}
+            <tr class="total-row">
+              <td colspan="4"><strong>Total em Vendas (entregues)</strong></td>
+              <td style="text-align: right"><strong>R$ ${totalSales.toFixed(2)}</strong></td>
+              <td></td>
+            </tr>
+            <tr class="commission-row">
+              <td colspan="5"><strong>Comissão da Plataforma (7%)</strong></td>
+              <td style="text-align: right"><strong>R$ ${commission.toFixed(2)}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <p><strong>Timbó Fala</strong> - Plataforma de Comércio Local</p>
+          <p>Relatório gerado automaticamente pelo sistema administrativo.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.print();
     }
   };
 
@@ -710,26 +824,36 @@ export default function AdminCommissions() {
 
       {/* Orders Report Dialog */}
       <Dialog open={showOrdersDialog} onOpenChange={setShowOrdersDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              {selectedBusiness?.logo_url ? (
-                <Avatar>
-                  <AvatarImage src={selectedBusiness.logo_url} />
-                  <AvatarFallback><Building2 className="w-4 h-4" /></AvatarFallback>
-                </Avatar>
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-primary" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {selectedBusiness?.logo_url ? (
+                  <Avatar>
+                    <AvatarImage src={selectedBusiness.logo_url} />
+                    <AvatarFallback><Building2 className="w-4 h-4" /></AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <div>
+                  <DialogTitle>{selectedBusiness?.business_name}</DialogTitle>
+                  <DialogDescription>
+                    Relatório de Pedidos - {currentMonth}
+                  </DialogDescription>
                 </div>
-              )}
-              <div>
-                <span>{selectedBusiness?.business_name}</span>
-                <p className="text-sm font-normal text-muted-foreground">
-                  Relatório de Pedidos - {currentMonth}
-                </p>
               </div>
-            </DialogTitle>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleExportPDF}
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Exportar PDF
+              </Button>
+            </div>
           </DialogHeader>
 
           {/* Stats Summary */}
