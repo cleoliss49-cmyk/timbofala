@@ -505,6 +505,9 @@ export type Database = {
       }
       business_profiles: {
         Row: {
+          accepts_card: boolean | null
+          accepts_cash: boolean | null
+          accepts_pix: boolean | null
           address: string | null
           business_name: string
           category: string
@@ -536,6 +539,9 @@ export type Database = {
           whatsapp: string | null
         }
         Insert: {
+          accepts_card?: boolean | null
+          accepts_cash?: boolean | null
+          accepts_pix?: boolean | null
           address?: string | null
           business_name: string
           category?: string
@@ -567,6 +573,9 @@ export type Database = {
           whatsapp?: string | null
         }
         Update: {
+          accepts_card?: boolean | null
+          accepts_cash?: boolean | null
+          accepts_pix?: boolean | null
           address?: string | null
           business_name?: string
           category?: string

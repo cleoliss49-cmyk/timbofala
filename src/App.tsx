@@ -31,6 +31,8 @@ import BusinessManage from "./pages/BusinessManage";
 import BusinessProduct from "./pages/BusinessProduct";
 import MyOrders from "./pages/MyOrders";
 import BusinessPaymentSettings from "./pages/BusinessPaymentSettings";
+import ConhecerPlataforma from "./pages/ConhecerPlataforma";
+import ConhecerEmpresas from "./pages/ConhecerEmpresas";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +69,8 @@ const App = () => (
               <Route path="/empresa/:slug" element={<Business />} />
               <Route path="/empresa/:businessSlug/produto/:productId" element={<BusinessProduct />} />
               <Route path="/meus-pedidos" element={<MyOrders />} />
+              <Route path="/conhecer" element={<ConhecerPlataforma />} />
+              <Route path="/conhecer-empresas" element={<ConhecerEmpresas />} />
               <Route path="/admtbo" element={<AdminAuth />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<NotFound />} />
