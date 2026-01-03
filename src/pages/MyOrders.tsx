@@ -810,9 +810,27 @@ function FuturisticOrderCard({ order, onSelect, getProgress }: {
   onSelect: (order: Order) => void;
   getProgress: (order: Order) => number;
 }) {
-  const statusInfo = ORDER_STATUS.find(s => s.value === order.status || s.value === order.payment_status) || ORDER_STATUS[0];
+  // Priority: show order.status first, only fall back to payment_status for specific active states
+  const getDisplayStatus = () => {
+    // Terminal statuses always take priority
+    if (['rejected', 'cancelled', 'delivered'].includes(order.status)) {
+      return order.status;
+    }
+    // For active orders, show payment-related status only if order is pending/awaiting
+    if (order.status === 'pending' && order.payment_status && ['awaiting_payment', 'pending_confirmation'].includes(order.payment_status)) {
+      return order.payment_status;
+    }
+    // For confirmed payment, show confirmed status
+    if (order.payment_status === 'confirmed' && ['pending', 'confirmed'].includes(order.status)) {
+      return 'confirmed';
+    }
+    return order.status;
+  };
+  
+  const displayStatus = getDisplayStatus();
+  const statusInfo = ORDER_STATUS.find(s => s.value === displayStatus) || ORDER_STATUS[0];
   const paymentInfo = order.payment_method ? PAYMENT_METHODS[order.payment_method as keyof typeof PAYMENT_METHODS] : null;
-  const isActive = !['delivered', 'cancelled'].includes(order.status);
+  const isActive = !['delivered', 'cancelled', 'rejected'].includes(order.status);
 
   return (
     <Card 
