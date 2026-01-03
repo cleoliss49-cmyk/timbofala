@@ -81,12 +81,6 @@ export default function Index() {
     },
   ];
 
-  const stats = [
-    { value: '10K+', label: 'Usuários' },
-    { value: '500+', label: 'Comércios' },
-    { value: '2K+', label: 'Eventos' },
-    { value: '100%', label: 'Timbó' },
-  ];
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -133,15 +127,21 @@ export default function Index() {
               <span className="text-xl font-display font-bold">Timbó Fala</span>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Link to="/auth">
-                <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
-                  Entrar
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Link to="/conhecer">
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
+                  Conhecer
+                </Button>
+              </Link>
+              <Link to="/conhecer-empresas">
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                  <Store className="w-4 h-4 mr-1" />
+                  Empresas
                 </Button>
               </Link>
               <Link to="/auth">
                 <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25">
-                  Começar
+                  Entrar
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -190,16 +190,6 @@ export default function Index() {
                       Já tenho conta
                     </Button>
                   </Link>
-                </div>
-
-                {/* Stats */}
-                <div className="pt-8 grid grid-cols-4 gap-4 max-w-md mx-auto lg:mx-0">
-                  {stats.map((stat, i) => (
-                    <div key={i} className="text-center">
-                      <div className="text-2xl sm:text-3xl font-bold text-primary">{stat.value}</div>
-                      <div className="text-xs text-muted-foreground">{stat.label}</div>
-                    </div>
-                  ))}
                 </div>
               </div>
 
