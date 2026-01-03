@@ -2277,6 +2277,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }
+      submit_pix_receipt: {
+        Args: { _order_id: string; _receipt_url: string }
+        Returns: undefined
+      }
     }
     Enums: {
       admin_role: "super_admin" | "moderator" | "viewer"
