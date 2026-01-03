@@ -49,7 +49,7 @@ export function OrdersBadge() {
       .from('business_orders')
       .select('id, status')
       .eq('customer_id', user.id)
-      .not('status', 'in', '("delivered","cancelled")');
+      .not('status', 'in', '(delivered,cancelled)');
 
     if (!error && data) {
       setPendingCount(data.length);

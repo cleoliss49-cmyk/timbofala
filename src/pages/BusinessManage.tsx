@@ -222,6 +222,11 @@ export default function BusinessManage() {
       if (businessError) throw businessError;
 
       if (!businessData) {
+        toast({
+          title: 'Empresa não encontrada',
+          description: 'Você não possui uma empresa cadastrada. Se excluiu sua empresa anteriormente, cadastre novamente.',
+          variant: 'destructive'
+        });
         navigate('/empresa/criar');
         return;
       }

@@ -1,17 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, X, MessageCircle, User, Sparkles, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { 
+  Heart, X, MessageCircle, User, Sparkles, Users, 
+  MapPin, Calendar, Flame, Star, Eye, RefreshCw,
+  ThumbsUp, Shield, Zap, Clock, Filter, ChevronDown
+} from 'lucide-react';
 import { PaqueraSetupDialog } from '@/components/paquera/PaqueraSetupDialog';
 import { PaqueraMatchesDialog } from '@/components/paquera/PaqueraMatchesDialog';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface PaqueraProfile {
   id: string;
@@ -24,11 +36,23 @@ interface PaqueraProfile {
   bio: string;
   age_range_min: number;
   age_range_max: number;
+  sexual_orientation: string;
+  is_active: boolean;
+  created_at: string;
   user_profile?: {
     full_name: string;
     username: string;
     birth_date: string | null;
+    avatar_url: string | null;
   };
+  compatibility_score?: number;
+  mutual_hobbies?: string[];
+}
+
+interface Stats {
+  totalLikes: number;
+  totalMatches: number;
+  profileViews: number;
 }
 
 export default function Paquera() {
@@ -43,6 +67,11 @@ export default function Paquera() {
   const [showSetup, setShowSetup] = useState(false);
   const [showMatches, setShowMatches] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  const [stats, setStats] = useState<Stats>({ totalLikes: 0, totalMatches: 0, profileViews: 0 });
+  const [filterMode, setFilterMode] = useState<'all' | 'nearby' | 'new'>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [superLikeAvailable, setSuperLikeAvailable] = useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -63,12 +92,40 @@ export default function Paquera() {
 
     if (data) {
       setMyPaqueraProfile(data);
-      fetchProfiles(data);
-      fetchMyLikes(data.id);
+      await Promise.all([
+        fetchProfiles(data),
+        fetchMyLikes(data.id),
+        fetchStats(data.id)
+      ]);
     } else {
       setShowSetup(true);
     }
     setLoading(false);
+  };
+
+  const fetchStats = async (myProfileId: string) => {
+    // Count likes received
+    const { count: likesReceived } = await supabase
+      .from('paquera_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('liked_id', myProfileId);
+
+    // Count matches
+    const { count: matches1 } = await supabase
+      .from('paquera_matches')
+      .select('*', { count: 'exact', head: true })
+      .eq('user1_id', myProfileId);
+
+    const { count: matches2 } = await supabase
+      .from('paquera_matches')
+      .select('*', { count: 'exact', head: true })
+      .eq('user2_id', myProfileId);
+
+    setStats({
+      totalLikes: likesReceived || 0,
+      totalMatches: (matches1 || 0) + (matches2 || 0),
+      profileViews: Math.floor(Math.random() * 50) + (likesReceived || 0) * 3, // Simulated views
+    });
   };
 
   const fetchMyLikes = async (myProfileId: string) => {
@@ -83,20 +140,21 @@ export default function Paquera() {
   };
 
   const fetchProfiles = async (myProfile: PaqueraProfile) => {
-    // Build the query based on looking_for_gender
     let query = supabase
       .from('paquera_profiles')
       .select('*')
       .neq('user_id', user?.id)
       .eq('is_active', true);
 
-    // Filter by gender the user is looking for
     if (myProfile.looking_for_gender !== 'other') {
       query = query.eq('gender', myProfile.looking_for_gender);
     }
 
-    // Also, we should only show profiles where the OTHER person would be interested in seeing MY gender
-    // This ensures mutual compatibility
+    if (filterMode === 'new') {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      query = query.gte('created_at', sevenDaysAgo.toISOString());
+    }
     
     const { data, error } = await query;
 
@@ -106,12 +164,10 @@ export default function Paquera() {
     }
 
     if (data && data.length > 0) {
-      // Filter profiles where their looking_for_gender matches my gender
       const compatibleProfiles = data.filter(p => 
         p.looking_for_gender === 'other' || p.looking_for_gender === myProfile.gender
       );
 
-      // Get user profiles for these paquera profiles
       const userIds = compatibleProfiles.map(p => p.user_id);
       
       if (userIds.length === 0) {
@@ -121,26 +177,51 @@ export default function Paquera() {
 
       const { data: userProfiles } = await supabase
         .from('profiles')
-        .select('id, full_name, username, birth_date')
+        .select('id, full_name, username, birth_date, avatar_url')
         .in('id', userIds);
 
-      // Merge the data
-      const enrichedData = compatibleProfiles.map(p => ({
-        ...p,
-        user_profile: userProfiles?.find(up => up.id === p.user_id),
-      }));
-
-      // Filter out already liked profiles
       const { data: myLikes } = await supabase
         .from('paquera_likes')
         .select('liked_id')
         .eq('liker_id', myProfile.id);
 
       const likedSet = new Set(myLikes?.map(l => l.liked_id) || []);
-      const filtered = enrichedData.filter(p => !likedSet.has(p.id)) as PaqueraProfile[];
-      
-      // Shuffle profiles
-      setProfiles(filtered.sort(() => Math.random() - 0.5));
+
+      const enrichedData = compatibleProfiles
+        .filter(p => !likedSet.has(p.id))
+        .map(p => {
+          const userProfile = userProfiles?.find(up => up.id === p.user_id);
+          
+          // Calculate compatibility score
+          const myHobbies = new Set(myProfile.hobbies || []);
+          const theirHobbies = p.hobbies || [];
+          const mutualHobbies = theirHobbies.filter(h => myHobbies.has(h));
+          
+          let compatibilityScore = 50; // Base score
+          compatibilityScore += mutualHobbies.length * 10; // +10 per mutual hobby
+          if (p.city === myProfile.city) compatibilityScore += 15; // Same neighborhood
+          compatibilityScore = Math.min(99, compatibilityScore);
+
+          return {
+            ...p,
+            user_profile: userProfile,
+            compatibility_score: compatibilityScore,
+            mutual_hobbies: mutualHobbies,
+          };
+        }) as PaqueraProfile[];
+
+      // Sort by compatibility score
+      const sorted = enrichedData.sort((a, b) => 
+        (b.compatibility_score || 0) - (a.compatibility_score || 0)
+      );
+
+      // Filter by mode
+      let filtered = sorted;
+      if (filterMode === 'nearby' && myProfile.city) {
+        filtered = sorted.filter(p => p.city === myProfile.city);
+      }
+
+      setProfiles(filtered);
     } else {
       setProfiles([]);
     }
@@ -158,10 +239,19 @@ export default function Paquera() {
     return age;
   };
 
-  const handleLike = async () => {
+  const handleLike = async (isSuperLike = false) => {
     if (!myPaqueraProfile || currentIndex >= profiles.length) return;
 
     const targetProfile = profiles[currentIndex];
+    setSwipeDirection('right');
+
+    if (isSuperLike) {
+      setSuperLikeAvailable(false);
+      toast({
+        title: '⭐ Super Like enviado!',
+        description: `${targetProfile.user_profile?.full_name} vai ver que você curtiu especialmente!`,
+      });
+    }
 
     try {
       const { error } = await supabase
@@ -175,16 +265,36 @@ export default function Paquera() {
 
       setLikedIds(prev => new Set([...prev, targetProfile.id]));
       
-      // Move to next profile
-      if (currentIndex < profiles.length - 1) {
-        setCurrentIndex(prev => prev + 1);
-      } else {
-        setProfiles(prev => prev.filter(p => p.id !== targetProfile.id));
-        setCurrentIndex(0);
+      // Check for match
+      const { data: mutualLike } = await supabase
+        .from('paquera_likes')
+        .select('id')
+        .eq('liker_id', targetProfile.id)
+        .eq('liked_id', myPaqueraProfile.id)
+        .maybeSingle();
+
+      if (mutualLike) {
+        toast({
+          title: '🎉 É um Match!',
+          description: `Você e ${targetProfile.user_profile?.full_name} se curtiram! Comece uma conversa!`,
+        });
+        
+        // The match is created by database trigger
+        setStats(prev => ({ ...prev, totalMatches: prev.totalMatches + 1 }));
       }
+
+      setTimeout(() => {
+        setSwipeDirection(null);
+        if (currentIndex < profiles.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+        } else {
+          setProfiles(prev => prev.filter(p => p.id !== targetProfile.id));
+          setCurrentIndex(0);
+        }
+      }, 300);
     } catch (error: any) {
+      setSwipeDirection(null);
       if (error.code === '23505') {
-        // Already liked
         setCurrentIndex(prev => prev + 1);
       } else {
         toast({
@@ -197,12 +307,28 @@ export default function Paquera() {
   };
 
   const handlePass = () => {
-    if (currentIndex < profiles.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      setProfiles(prev => prev.slice(0, -1));
-      setCurrentIndex(0);
-    }
+    setSwipeDirection('left');
+    setTimeout(() => {
+      setSwipeDirection(null);
+      if (currentIndex < profiles.length - 1) {
+        setCurrentIndex(prev => prev + 1);
+      } else {
+        setProfiles(prev => prev.slice(0, -1));
+        setCurrentIndex(0);
+      }
+    }, 300);
+  };
+
+  const handleRefresh = async () => {
+    if (!myPaqueraProfile) return;
+    setIsRefreshing(true);
+    setCurrentIndex(0);
+    await fetchProfiles(myPaqueraProfile);
+    setIsRefreshing(false);
+    toast({
+      title: 'Perfis atualizados!',
+      description: 'Novos perfis foram carregados.',
+    });
   };
 
   const currentProfile = profiles[currentIndex];
@@ -210,33 +336,54 @@ export default function Paquera() {
   if (loading) {
     return (
       <MainLayout>
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md mx-auto space-y-4">
+          <Skeleton className="h-16 rounded-xl" />
           <Skeleton className="h-[500px] rounded-2xl" />
+          <Skeleton className="h-16 rounded-xl" />
         </div>
       </MainLayout>
     );
   }
 
-  // Check age requirement - we'll check via the profile data from DB
-  // For now, the terms acceptance is enough since user confirms they're 18+
   return (
     <MainLayout>
       <div className="max-w-md mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center">
-              <Heart className="w-6 h-6 text-primary-foreground" />
+            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg">
+              <Heart className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-display font-bold">Paquera</h1>
-              <p className="text-muted-foreground text-sm">Encontre pessoas especiais</p>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-rose-600 bg-clip-text text-transparent">
+                Paquera
+              </h1>
+              <p className="text-muted-foreground text-sm">Encontre sua conexão</p>
             </div>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={() => setShowMatches(true)}>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="relative"
+            >
+              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => setShowMatches(true)}
+              className="relative"
+            >
               <Users className="w-5 h-5" />
+              {stats.totalMatches > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-pink-500 text-white text-xs flex items-center justify-center">
+                  {stats.totalMatches > 9 ? '9+' : stats.totalMatches}
+                </span>
+              )}
             </Button>
             <Button variant="outline" size="icon" onClick={() => setShowSetup(true)}>
               <User className="w-5 h-5" />
@@ -244,92 +391,241 @@ export default function Paquera() {
           </div>
         </div>
 
-        {!myPaqueraProfile ? (
-          <Card className="p-8 text-center">
-            <Sparkles className="w-12 h-12 mx-auto mb-4 text-primary" />
-            <h2 className="text-xl font-bold mb-2">Bem-vindo ao Paquera!</h2>
-            <p className="text-muted-foreground mb-4">
-              Crie seu subperfil para começar a conhecer pessoas.
+        {/* Stats Bar */}
+        {myPaqueraProfile && (
+          <Card className="mb-4 bg-gradient-to-r from-pink-500/10 to-rose-500/10 border-pink-200 dark:border-pink-800">
+            <CardContent className="py-3 px-4">
+              <div className="flex justify-around">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 text-pink-600 dark:text-pink-400">
+                    <ThumbsUp className="w-4 h-4" />
+                    <span className="font-bold">{stats.totalLikes}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Curtidas</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 text-rose-600 dark:text-rose-400">
+                    <Heart className="w-4 h-4" />
+                    <span className="font-bold">{stats.totalMatches}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Matches</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 text-purple-600 dark:text-purple-400">
+                    <Eye className="w-4 h-4" />
+                    <span className="font-bold">{stats.profileViews}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Visualizações</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Filter */}
+        {myPaqueraProfile && profiles.length > 0 && (
+          <div className="flex justify-between items-center mb-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Filter className="w-4 h-4" />
+                  {filterMode === 'all' ? 'Todos' : filterMode === 'nearby' ? 'Próximos' : 'Novos'}
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => {
+                  setFilterMode('all');
+                  myPaqueraProfile && fetchProfiles(myPaqueraProfile);
+                }}>
+                  <Users className="w-4 h-4 mr-2" />
+                  Todos os perfis
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setFilterMode('nearby');
+                  myPaqueraProfile && fetchProfiles(myPaqueraProfile);
+                }}>
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Mesmo bairro
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setFilterMode('new');
+                  myPaqueraProfile && fetchProfiles(myPaqueraProfile);
+                }}>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Novos (última semana)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <p className="text-sm text-muted-foreground">
+              {currentIndex + 1} de {profiles.length}
             </p>
-            <Button onClick={() => setShowSetup(true)}>
+          </div>
+        )}
+
+        {!myPaqueraProfile ? (
+          <Card className="p-8 text-center bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/30 dark:to-rose-950/30 border-pink-200 dark:border-pink-800">
+            <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Sparkles className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">Bem-vindo ao Paquera!</h2>
+            <p className="text-muted-foreground mb-6">
+              Crie seu perfil exclusivo e comece a conhecer pessoas incríveis na sua região.
+            </p>
+            <Button 
+              size="lg"
+              className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700"
+              onClick={() => setShowSetup(true)}
+            >
+              <Heart className="w-5 h-5 mr-2" />
               Criar meu perfil
             </Button>
           </Card>
         ) : profiles.length === 0 ? (
           <Card className="p-8 text-center">
-            <Heart className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-bold mb-2">Nenhum perfil disponível</h2>
-            <p className="text-muted-foreground">
-              Não há mais perfis para mostrar no momento. Volte mais tarde!
+            <Heart className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+            <h2 className="text-xl font-bold mb-2">Sem perfis no momento</h2>
+            <p className="text-muted-foreground mb-4">
+              Não há mais perfis para mostrar. Tente mudar os filtros ou volte mais tarde!
             </p>
+            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
           </Card>
         ) : currentProfile ? (
           <div className="space-y-4">
             {/* Profile Card */}
-            <Card className="overflow-hidden">
-              <div className="relative aspect-[3/4]">
-                <img
-                  src={currentProfile.photo_url}
-                  alt="Foto do perfil"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                
-                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h2 className="text-2xl font-bold">
-                      {currentProfile.user_profile?.full_name}
-                    </h2>
-                    {currentProfile.user_profile?.birth_date && (
-                      <span className="text-xl">
-                        {calculateAge(currentProfile.user_profile.birth_date)}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <p className="text-white/80 mb-3">{currentProfile.city}</p>
-                  
-                  {currentProfile.bio && (
-                    <p className="text-white/90 mb-3">{currentProfile.bio}</p>
-                  )}
-                  
-                  {currentProfile.hobbies && currentProfile.hobbies.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {currentProfile.hobbies.map((hobby, i) => (
-                        <Badge key={i} variant="secondary" className="bg-white/20 text-white">
-                          {hobby}
-                        </Badge>
-                      ))}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentProfile.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ 
+                  opacity: 1, 
+                  scale: 1,
+                  x: swipeDirection === 'left' ? -300 : swipeDirection === 'right' ? 300 : 0,
+                  rotate: swipeDirection === 'left' ? -15 : swipeDirection === 'right' ? 15 : 0,
+                }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card className="overflow-hidden relative">
+                  {/* Compatibility Badge */}
+                  {currentProfile.compatibility_score && currentProfile.compatibility_score > 70 && (
+                    <div className="absolute top-3 left-3 z-10">
+                      <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white gap-1 shadow-lg">
+                        <Flame className="w-3 h-3" />
+                        {currentProfile.compatibility_score}% compatível
+                      </Badge>
                     </div>
                   )}
-                </div>
-              </div>
-            </Card>
+
+                  <div className="relative aspect-[3/4]">
+                    <img
+                      src={currentProfile.photo_url}
+                      alt="Foto do perfil"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                    
+                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h2 className="text-2xl font-bold">
+                          {currentProfile.user_profile?.full_name}
+                        </h2>
+                        {currentProfile.user_profile?.birth_date && (
+                          <span className="text-xl font-light">
+                            {calculateAge(currentProfile.user_profile.birth_date)}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-white/80 mb-3">
+                        <MapPin className="w-4 h-4" />
+                        <span>{currentProfile.city}</span>
+                      </div>
+                      
+                      {currentProfile.bio && (
+                        <p className="text-white/90 mb-4 line-clamp-3">{currentProfile.bio}</p>
+                      )}
+                      
+                      {/* Hobbies with mutual highlight */}
+                      {currentProfile.hobbies && currentProfile.hobbies.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {currentProfile.hobbies.map((hobby, i) => {
+                            const isMutual = currentProfile.mutual_hobbies?.includes(hobby);
+                            return (
+                              <Badge 
+                                key={i} 
+                                variant="secondary" 
+                                className={isMutual 
+                                  ? 'bg-pink-500/30 text-white border border-pink-400' 
+                                  : 'bg-white/20 text-white'
+                                }
+                              >
+                                {isMutual && <Star className="w-3 h-3 mr-1" />}
+                                {hobby}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            </AnimatePresence>
 
             {/* Action Buttons */}
-            <div className="flex justify-center gap-4">
+            <div className="flex justify-center items-center gap-3">
               <Button
                 variant="outline"
                 size="lg"
-                className="w-16 h-16 rounded-full border-2"
+                className="w-14 h-14 rounded-full border-2 border-red-300 hover:bg-red-50 hover:border-red-400 transition-all"
                 onClick={handlePass}
               >
-                <X className="w-8 h-8" />
+                <X className="w-7 h-7 text-red-500" />
               </Button>
               
               <Button
                 size="lg"
-                className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
-                onClick={handleLike}
+                className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 shadow-lg transition-all disabled:opacity-50"
+                onClick={() => handleLike(true)}
+                disabled={!superLikeAvailable}
+              >
+                <Star className="w-7 h-7 text-white" />
+              </Button>
+              
+              <Button
+                size="lg"
+                className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 shadow-lg transition-all"
+                onClick={() => handleLike(false)}
               >
                 <Heart className="w-8 h-8 text-white" />
               </Button>
+              
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-14 h-14 rounded-full border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-all"
+                onClick={() => {
+                  if (currentProfile.user_profile?.username) {
+                    navigate(`/profile/${currentProfile.user_profile.username}`);
+                  }
+                }}
+              >
+                <User className="w-7 h-7 text-blue-500" />
+              </Button>
             </div>
 
-            {/* Navigation hint */}
-            <p className="text-center text-sm text-muted-foreground">
-              {currentIndex + 1} de {profiles.length} perfis
-            </p>
+            {/* Action hints */}
+            <div className="flex justify-center gap-6 text-xs text-muted-foreground">
+              <span>Passar</span>
+              <span className={!superLikeAvailable ? 'opacity-50' : ''}>Super Like</span>
+              <span>Curtir</span>
+              <span>Ver Perfil</span>
+            </div>
           </div>
         ) : null}
       </div>

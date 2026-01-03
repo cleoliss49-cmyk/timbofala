@@ -11,6 +11,7 @@ import {
   Store, Search, MapPin, CheckCircle, Truck,
   Building2, Filter
 } from 'lucide-react';
+import { StoreHoursIndicator } from '@/components/business/StoreHoursIndicator';
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ interface BusinessProfile {
   neighborhood: string | null;
   offers_delivery: boolean;
   is_verified: boolean;
+  opening_hours: any;
 }
 
 const CATEGORIES = [
@@ -73,7 +75,41 @@ export default function Businesses() {
     }
   };
 
-  const filteredBusinesses = businesses.filter(business => {
+  // Helper to check if a business is currently open
+  const isBusinessOpen = (openingHours: any): boolean => {
+    if (!openingHours) return true; // No hours = treat as open
+    
+    const DAY_MAP: { [key: number]: string } = {
+      0: 'sunday', 1: 'monday', 2: 'tuesday', 3: 'wednesday',
+      4: 'thursday', 5: 'friday', 6: 'saturday',
+    };
+    
+    const now = new Date();
+    const currentDay = DAY_MAP[now.getDay()];
+    const currentTime = now.getHours() * 100 + now.getMinutes();
+    const todayHours = openingHours[currentDay];
+    
+    if (!todayHours || todayHours.closed === true || todayHours.enabled === false) {
+      return false;
+    }
+    
+    const openTime = parseInt(todayHours.open.replace(':', ''), 10);
+    const closeTime = parseInt(todayHours.close.replace(':', ''), 10);
+    
+    return currentTime >= openTime && currentTime < closeTime;
+  };
+
+  // Sort businesses: open first, then verified, then by name
+  const sortedBusinesses = [...businesses].sort((a, b) => {
+    const aOpen = isBusinessOpen(a.opening_hours);
+    const bOpen = isBusinessOpen(b.opening_hours);
+    
+    if (aOpen !== bOpen) return aOpen ? -1 : 1;
+    if (a.is_verified !== b.is_verified) return a.is_verified ? -1 : 1;
+    return a.business_name.localeCompare(b.business_name);
+  });
+
+  const filteredBusinesses = sortedBusinesses.filter(business => {
     const matchesSearch = business.business_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       business.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'todos' || business.category === selectedCategory;
@@ -160,6 +196,10 @@ export default function Businesses() {
                         <Store className="w-6 h-6 text-primary" />
                       </div>
                     )}
+                    {/* Store status indicator */}
+                    <div className="absolute top-2 right-2">
+                      <StoreHoursIndicator openingHours={business.opening_hours} size="sm" />
+                    </div>
                   </div>
                   <CardContent className="pt-10 pb-4 px-4">
                     <div className="flex items-start justify-between gap-2">
