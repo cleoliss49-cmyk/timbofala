@@ -111,9 +111,12 @@ export function OrderDetailsDialog({
 
   const formattedDate = format(new Date(order.created_at), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR });
 
+  // Check if there's a receipt to show
+  const hasReceipt = !!order.receipt_url;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-2xl h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
         {/* Premium Header with gradient */}
         <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background p-6 border-b">
           <div className="flex items-start justify-between gap-4">
@@ -192,14 +195,15 @@ export function OrderDetailsDialog({
           </button>
         </div>
 
-        {/* Content */}
-        <ScrollArea className="flex-1">
+        {/* Content - Fixed height ScrollArea for proper scrolling */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
           {activeTab === 'details' ? (
             <div className="p-6 space-y-6">
-              {/* Receipt Alert - PIX Payment */}
-              {isPendingReceipt && order.receipt_url && (
+              {/* Receipt Alert - PIX Payment - Show when pending confirmation */}
+              {isPendingReceipt && hasReceipt && (
                 <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100/50 p-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
                       <Receipt className="w-6 h-6 text-white" />
                     </div>
@@ -207,12 +211,12 @@ export function OrderDetailsDialog({
                       <h4 className="font-semibold text-blue-900">Comprovante Enviado</h4>
                       <p className="text-sm text-blue-700">O cliente enviou o comprovante de pagamento PIX</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
                       <Button 
                         size="sm" 
                         variant="outline"
                         onClick={() => onViewReceipt(order.receipt_url!)}
-                        className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50"
+                        className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50 flex-1 sm:flex-auto"
                       >
                         <Eye className="w-4 h-4" />
                         Ver
@@ -220,7 +224,7 @@ export function OrderDetailsDialog({
                       <Button 
                         size="sm"
                         onClick={() => onConfirmPayment(order.id)}
-                        className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                        className="gap-1.5 bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-auto"
                       >
                         <CheckCircle className="w-4 h-4" />
                         Confirmar
@@ -230,24 +234,24 @@ export function OrderDetailsDialog({
                 </div>
               )}
 
-              {/* Show receipt preview if PIX and has receipt */}
-              {isPix && order.receipt_url && !isPendingReceipt && (
-                <div className="rounded-xl border bg-muted/30 p-4">
+              {/* Always show receipt section if PIX and has receipt (even if already confirmed) */}
+              {isPix && hasReceipt && !isPendingReceipt && (
+                <div className="rounded-xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-green-100/50 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h4 className="font-medium">Pagamento Confirmado</h4>
-                        <p className="text-sm text-muted-foreground">Comprovante PIX verificado</p>
+                        <h4 className="font-semibold text-green-900">Pagamento Confirmado</h4>
+                        <p className="text-sm text-green-700">Comprovante PIX verificado</p>
                       </div>
                     </div>
                     <Button 
                       size="sm" 
-                      variant="ghost"
+                      variant="outline"
                       onClick={() => onViewReceipt(order.receipt_url!)}
-                      className="gap-1.5"
+                      className="gap-1.5 border-green-300 text-green-700 hover:bg-green-50"
                     >
                       <Eye className="w-4 h-4" />
                       Ver Comprovante
@@ -417,7 +421,8 @@ export function OrderDetailsDialog({
               />
             </div>
           )}
-        </ScrollArea>
+          </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
