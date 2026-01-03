@@ -21,6 +21,7 @@ import { StoreHoursEditor } from '@/components/business/StoreHoursEditor';
 import { EstimatedTimeEditor } from '@/components/business/EstimatedTimeEditor';
 import { OrderDetailsDialog } from '@/components/business/OrderDetailsDialog';
 import { DeleteBusinessDialog } from '@/components/business/DeleteBusinessDialog';
+import { PlatformCommissionPanel } from '@/components/business/PlatformCommissionPanel';
 import { 
   Package, Plus, Edit, Trash2, Eye, ExternalLink, 
   Upload, Loader2, ShoppingBag, Clock, CheckCircle, 
@@ -1024,6 +1025,12 @@ export default function BusinessManage() {
               businessId={business.id}
               initialHours={business.opening_hours}
               onSave={() => fetchBusiness()}
+            />
+
+            {/* Platform Commission */}
+            <PlatformCommissionPanel 
+              businessId={business.id}
+              businessName={business.business_name}
             />
 
             {/* Danger Zone */}

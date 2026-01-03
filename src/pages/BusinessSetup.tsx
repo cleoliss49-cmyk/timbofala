@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TIMBO_NEIGHBORHOODS } from '@/lib/neighborhoods';
+import { PlatformTermsDialog } from '@/components/business/PlatformTermsDialog';
 
 const CATEGORIES = [
   { value: 'alimentacao', label: 'Alimentação' },
@@ -47,6 +48,9 @@ export default function BusinessSetup() {
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [coverPreview, setCoverPreview] = useState<string>('');
   
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
   const [formData, setFormData] = useState({
     business_name: '',
     slug: '',
@@ -151,6 +155,16 @@ export default function BusinessSetup() {
       return;
     }
 
+    // Show terms dialog if not accepted yet
+    if (!termsAccepted) {
+      setShowTermsDialog(true);
+      return;
+    }
+
+    await createBusiness();
+  };
+
+  const createBusiness = async () => {
     setLoading(true);
     try {
       let logo_url = null;
@@ -184,7 +198,9 @@ export default function BusinessSetup() {
           delivery_fee: formData.delivery_fee ? parseFloat(formData.delivery_fee) : null,
           min_order_value: formData.min_order_value ? parseFloat(formData.min_order_value) : null,
           logo_url,
-          cover_url
+          cover_url,
+          accepted_platform_terms: true,
+          accepted_platform_terms_at: new Date().toISOString()
         });
 
       if (error) {
@@ -215,6 +231,21 @@ export default function BusinessSetup() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAcceptTerms = () => {
+    setTermsAccepted(true);
+    setShowTermsDialog(false);
+    createBusiness();
+  };
+
+  const handleDeclineTerms = () => {
+    setShowTermsDialog(false);
+    toast({
+      title: 'Termos não aceitos',
+      description: 'Você precisa aceitar os termos para criar uma conta empresarial.',
+      variant: 'destructive'
+    });
   };
 
   if (authLoading || checking) {
@@ -558,6 +589,12 @@ export default function BusinessSetup() {
             )}
           </Button>
         </form>
+
+        <PlatformTermsDialog
+          open={showTermsDialog}
+          onAccept={handleAcceptTerms}
+          onDecline={handleDeclineTerms}
+        />
       </div>
     </MainLayout>
   );
