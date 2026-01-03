@@ -84,14 +84,21 @@ export function BusinessDashboard({ businessId, orders, onViewReceipt, onViewOrd
 
   const calculateAnalytics = () => {
     const filteredOrders = filterOrdersByPeriod();
-    const completedOrders = filteredOrders.filter(o => !['cancelled', 'pending'].includes(o.status));
     
-    // Revenue stats
-    const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
-    const avgOrderValue = completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0;
+    // CRITICAL: Revenue ONLY from delivered orders
+    const deliveredOrders = filteredOrders.filter(o => o.status === 'delivered');
     
-    // Payment breakdown
-    const paymentBreakdown = completedOrders.reduce((acc, order) => {
+    // Cancelled + Rejected = Cancelados
+    const cancelledOrders = filteredOrders.filter(o => 
+      o.status === 'cancelled' || o.status === 'rejected'
+    );
+    
+    // Revenue stats - ONLY from delivered orders
+    const totalRevenue = deliveredOrders.reduce((sum, o) => sum + o.total, 0);
+    const avgOrderValue = deliveredOrders.length > 0 ? totalRevenue / deliveredOrders.length : 0;
+    
+    // Payment breakdown - ONLY from delivered orders
+    const paymentBreakdown = deliveredOrders.reduce((acc, order) => {
       const method = order.payment_method || 'unknown';
       acc[method] = (acc[method] || 0) + order.total;
       return acc;
@@ -109,14 +116,14 @@ export function BusinessDashboard({ businessId, orders, onViewReceipt, onViewOrd
       return acc;
     }, {} as Record<string, number>);
 
-    // Daily revenue (last 7 days)
+    // Daily revenue (last 7 days) - ONLY from delivered orders
     const dailyRevenue = [];
     for (let i = 6; i >= 0; i--) {
       const date = subDays(new Date(), i);
       const dayOrders = orders.filter(o => {
         const orderDate = new Date(o.created_at);
         return format(orderDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd') &&
-               !['cancelled', 'pending'].includes(o.status);
+               o.status === 'delivered';
       });
       dailyRevenue.push({
         date: format(date, 'EEE', { locale: ptBR }),
@@ -131,14 +138,14 @@ export function BusinessDashboard({ businessId, orders, onViewReceipt, onViewOrd
       o.payment_status === 'pending_confirmation' && o.receipt_url
     );
 
-    // Unique customers
+    // Unique customers - from all orders
     const uniqueCustomers = new Set(filteredOrders.map(o => o.customer_id)).size;
 
     setAnalyticsData({
       totalOrders: filteredOrders.length,
-      completedOrders: completedOrders.length,
-      cancelledOrders: filteredOrders.filter(o => o.status === 'cancelled').length,
-      totalRevenue,
+      completedOrders: deliveredOrders.length,
+      cancelledOrders: cancelledOrders.length, // cancelled + rejected
+      totalRevenue, // ONLY from delivered
       avgOrderValue,
       paymentBreakdown,
       paymentChartData,
@@ -149,7 +156,8 @@ export function BusinessDashboard({ businessId, orders, onViewReceipt, onViewOrd
       pendingOrders: filteredOrders.filter(o => o.status === 'pending').length,
       preparingOrders: filteredOrders.filter(o => o.status === 'preparing').length,
       readyOrders: filteredOrders.filter(o => o.status === 'ready').length,
-      deliveredOrders: filteredOrders.filter(o => o.status === 'delivered').length
+      deliveredOrders: deliveredOrders.length,
+      rejectedOrders: filteredOrders.filter(o => o.status === 'rejected').length
     });
   };
 
@@ -271,7 +279,7 @@ export function BusinessDashboard({ businessId, orders, onViewReceipt, onViewOrd
             <div className="text-center p-3 rounded-lg bg-red-50">
               <XCircle className="w-5 h-5 text-red-600 mx-auto mb-1" />
               <p className="text-xl font-bold text-red-700">{analyticsData.cancelledOrders}</p>
-              <p className="text-[10px] text-muted-foreground">Cancelados</p>
+              <p className="text-[10px] text-muted-foreground">Cancelados/Rejeitados</p>
             </div>
           </div>
         </CardContent>

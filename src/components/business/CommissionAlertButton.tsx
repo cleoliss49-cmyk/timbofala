@@ -49,26 +49,38 @@ export function CommissionAlertButton({ businessId, businessName }: CommissionAl
 
   const fetchPendingCommission = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch all commissions for this business
+      const { data: commissionsData, error: commissionsError } = await supabase
         .from('platform_commissions')
         .select('*')
+        .eq('business_id', businessId);
+
+      if (commissionsError) throw commissionsError;
+
+      // Fetch confirmed payments
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('commission_payments')
+        .select('*')
         .eq('business_id', businessId)
-        .in('status', ['pending', 'awaiting_confirmation'])
-        .order('month_year', { ascending: false });
+        .not('confirmed_at', 'is', null);
 
-      if (error) throw error;
+      if (paymentsError) throw paymentsError;
 
-      // Get total pending amount
-      const pendingTotal = (data || [])
-        .filter((c: any) => c.status === 'pending')
-        .reduce((sum: number, c: any) => sum + c.commission_amount, 0);
+      // Calculate real balance
+      const totalCommission = (commissionsData || []).reduce((sum: number, c: any) => sum + (c.commission_amount || 0), 0);
+      const totalPaid = (paymentsData || []).reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+      const currentBalance = Math.max(0, totalCommission - totalPaid);
 
-      if (pendingTotal > 0) {
-        const mostRecent = (data || []).find((c: any) => c.status === 'pending');
+      if (currentBalance > 0) {
+        // Get the most recent commission record for reference
+        const mostRecent = (commissionsData || []).sort((a: any, b: any) => 
+          b.month_year.localeCompare(a.month_year)
+        )[0];
+        
         if (mostRecent) {
           setPendingCommission({
             ...mostRecent,
-            commission_amount: pendingTotal
+            commission_amount: currentBalance // Use real balance
           } as Commission);
         }
       } else {
@@ -169,7 +181,7 @@ export function CommissionAlertButton({ businessId, businessName }: CommissionAl
         onClick={() => setShowPaymentDialog(true)}
       >
         <AlertTriangle className="w-5 h-5" />
-        Comissão a Pagar: R$ {pendingCommission.commission_amount.toFixed(2)}
+        Saldo Devedor: R$ {pendingCommission.commission_amount.toFixed(2)}
       </Button>
 
       {/* Payment Dialog */}
@@ -188,13 +200,13 @@ export function CommissionAlertButton({ businessId, businessName }: CommissionAl
           <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             {/* Amount Display */}
             <div className="text-center p-4 bg-primary/10 rounded-xl">
-              <p className="text-sm text-muted-foreground">Total a pagar:</p>
+              <p className="text-sm text-muted-foreground">Saldo Devedor Total:</p>
               <p className="text-4xl font-bold text-primary">
                 R$ {pendingCommission.commission_amount.toFixed(2)}
               </p>
-              <Badge variant="outline" className="mt-2">
-                Referente a {formatMonthYear(pendingCommission.month_year)}
-              </Badge>
+              <p className="text-xs text-muted-foreground mt-2">
+                Valor calculado automaticamente após cada pagamento confirmado
+              </p>
             </div>
 
             {/* QR Code */}
