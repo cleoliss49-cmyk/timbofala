@@ -833,7 +833,7 @@ export default function BusinessManage() {
                             </>
                           )}
                           
-                          {/* Reject Order Button - visible for pending orders only */}
+                          {/* Reject Order Button - visible for pending orders only (cannot reject after accepting) */}
                           {order.status === 'pending' && (
                             <Button
                               size="sm"

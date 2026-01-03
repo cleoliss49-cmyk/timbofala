@@ -174,7 +174,7 @@ export function CommissionAlertButton({ businessId, businessName }: CommissionAl
 
       {/* Payment Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-primary" />
@@ -185,7 +185,7 @@ export function CommissionAlertButton({ businessId, businessName }: CommissionAl
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             {/* Amount Display */}
             <div className="text-center p-4 bg-primary/10 rounded-xl">
               <p className="text-sm text-muted-foreground">Total a pagar:</p>
