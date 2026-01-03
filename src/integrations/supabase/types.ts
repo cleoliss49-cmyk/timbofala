@@ -514,6 +514,8 @@ export type Database = {
       }
       business_profiles: {
         Row: {
+          accepted_platform_terms: boolean | null
+          accepted_platform_terms_at: string | null
           accepts_card: boolean | null
           accepts_cash: boolean | null
           accepts_pix: boolean | null
@@ -548,6 +550,8 @@ export type Database = {
           whatsapp: string | null
         }
         Insert: {
+          accepted_platform_terms?: boolean | null
+          accepted_platform_terms_at?: string | null
           accepts_card?: boolean | null
           accepts_cash?: boolean | null
           accepts_pix?: boolean | null
@@ -582,6 +586,8 @@ export type Database = {
           whatsapp?: string | null
         }
         Update: {
+          accepted_platform_terms?: boolean | null
+          accepted_platform_terms_at?: string | null
           accepts_card?: boolean | null
           accepts_cash?: boolean | null
           accepts_pix?: boolean | null
@@ -1432,6 +1438,65 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_commissions: {
+        Row: {
+          admin_notes: string | null
+          business_id: string
+          commission_amount: number
+          commission_rate: number
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          month_year: string
+          paid_at: string | null
+          receipt_uploaded_at: string | null
+          receipt_url: string | null
+          status: string
+          total_sales: number
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          business_id: string
+          commission_amount?: number
+          commission_rate?: number
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          month_year: string
+          paid_at?: string | null
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
+          status?: string
+          total_sales?: number
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          business_id?: string
+          commission_amount?: number
+          commission_rate?: number
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          month_year?: string
+          paid_at?: string | null
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
+          status?: string
+          total_sales?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_commissions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "business_profiles"
             referencedColumns: ["id"]
           },
         ]

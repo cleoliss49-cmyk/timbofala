@@ -33,6 +33,7 @@ import MyOrders from "./pages/MyOrders";
 import BusinessPaymentSettings from "./pages/BusinessPaymentSettings";
 import ConhecerPlataforma from "./pages/ConhecerPlataforma";
 import ConhecerEmpresas from "./pages/ConhecerEmpresas";
+import AdminCommissions from "./pages/AdminCommissions";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/conhecer-empresas" element={<ConhecerEmpresas />} />
               <Route path="/admtbo" element={<AdminAuth />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/admin/comissoes" element={<AdminCommissions />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ErrorBoundary>

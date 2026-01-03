@@ -16,8 +16,9 @@ import { ContentSearch } from '@/components/admin/ContentSearch';
 import { UserBanDialog } from '@/components/admin/UserBanDialog';
 import { 
   Shield, Users, FileText, Flag, Pin, LogOut, Search, Trash2, Eye, UserX, 
-  TrendingUp, Calendar, Clock, Plus, X, Ban, BarChart3, AlertTriangle
+  TrendingUp, Calendar, Clock, Plus, X, Ban, BarChart3, AlertTriangle, DollarSign
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -166,7 +167,15 @@ export default function Admin() {
               <p className="text-xs text-muted-foreground">{adminData?.email} • {adminData?.role === 'super_admin' ? 'Super Admin' : 'Moderador'}</p>
             </div>
           </div>
-          <Button variant="ghost" onClick={handleLogout}><LogOut className="w-4 h-4 mr-2" />Sair</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/admin/comissoes">
+                <DollarSign className="w-4 h-4 mr-2" />
+                Comissões
+              </Link>
+            </Button>
+            <Button variant="ghost" onClick={handleLogout}><LogOut className="w-4 h-4 mr-2" />Sair</Button>
+          </div>
         </div>
       </header>
 
