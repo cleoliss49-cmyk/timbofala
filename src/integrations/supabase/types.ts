@@ -1469,6 +1469,7 @@ export type Database = {
       platform_commissions: {
         Row: {
           admin_notes: string | null
+          balance: number
           business_id: string
           commission_amount: number
           commission_rate: number
@@ -1476,6 +1477,7 @@ export type Database = {
           created_at: string
           id: string
           month_year: string
+          paid_amount: number
           paid_at: string | null
           receipt_uploaded_at: string | null
           receipt_url: string | null
@@ -1485,6 +1487,7 @@ export type Database = {
         }
         Insert: {
           admin_notes?: string | null
+          balance?: number
           business_id: string
           commission_amount?: number
           commission_rate?: number
@@ -1492,6 +1495,7 @@ export type Database = {
           created_at?: string
           id?: string
           month_year: string
+          paid_amount?: number
           paid_at?: string | null
           receipt_uploaded_at?: string | null
           receipt_url?: string | null
@@ -1501,6 +1505,7 @@ export type Database = {
         }
         Update: {
           admin_notes?: string | null
+          balance?: number
           business_id?: string
           commission_amount?: number
           commission_rate?: number
@@ -1508,6 +1513,7 @@ export type Database = {
           created_at?: string
           id?: string
           month_year?: string
+          paid_amount?: number
           paid_at?: string | null
           receipt_uploaded_at?: string | null
           receipt_url?: string | null
