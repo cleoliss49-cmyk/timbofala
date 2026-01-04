@@ -419,86 +419,40 @@ export default function Index() {
           </div>
         </section>
 
-        {/* Business CTA Section */}
-        <section className="py-24 px-4 bg-gradient-to-b from-background to-emerald-500/5">
-          <div className="container mx-auto max-w-6xl">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-sm">
-                  <Store className="w-4 h-4 text-emerald-600" />
-                  <span className="text-emerald-600 font-medium">Para Empresas</span>
+        {/* Business CTA Section - Simplified */}
+        <section className="py-24 px-4 bg-gradient-to-b from-background to-muted/30">
+          <div className="container mx-auto max-w-4xl">
+            <div className="grid sm:grid-cols-2 gap-6">
+              {/* Comércios */}
+              <div className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/30 rounded-3xl p-8 text-center">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-4">
+                  <Store className="w-8 h-8 text-emerald-600" />
                 </div>
-                
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold">
-                  Leve seu negócio
-                  <br />
-                  <span className="text-emerald-600">para o digital</span>
-                </h2>
-                
-                <p className="text-lg text-muted-foreground leading-relaxed">
-                  Crie sua loja virtual, receba pedidos online e aumente suas vendas. 
-                  <strong className="text-foreground"> Pague apenas 7% de comissão sobre pedidos concluídos!</strong>
+                <h3 className="text-xl font-bold mb-2">Tem um Comércio?</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Venda produtos online e receba pedidos.
                 </p>
-                
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>Apenas 7% de Comissão</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>Sem Mensalidade</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>Pedidos em Tempo Real</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Link to="/conhecer-empresas">
-                    <Button size="lg" className="h-12 px-6 bg-emerald-600 hover:bg-emerald-700 group">
-                      <Store className="w-5 h-5 mr-2" />
-                      Conhecer para Empresas
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </Link>
-                  <Link to="/conhecer">
-                    <Button size="lg" variant="outline" className="h-12 px-6">
-                      Conhecer Plataforma
-                    </Button>
-                  </Link>
-                </div>
+                <Link to="/conhecer-empresas">
+                  <Button className="bg-emerald-600 hover:bg-emerald-700">
+                    Saiba mais
+                  </Button>
+                </Link>
               </div>
-              
-              <div className="hidden lg:block">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-green-500/20 rounded-3xl blur-3xl" />
-                  <div className="relative bg-card border border-border/50 rounded-3xl p-8 space-y-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-                        <Store className="w-8 h-8 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg">Sua Loja Aqui</h3>
-                        <p className="text-sm text-muted-foreground">Categoria • Timbó, SC</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="aspect-square bg-muted rounded-xl" />
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1 h-10 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-sm font-medium">
-                        Fazer Pedido
-                      </div>
-                      <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                        <Heart className="w-5 h-5" />
-                      </div>
-                    </div>
-                  </div>
+
+              {/* Empresas */}
+              <div className="bg-gradient-to-br from-purple-500/10 to-violet-500/10 border border-purple-500/30 rounded-3xl p-8 text-center">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-purple-500/20 flex items-center justify-center mb-4">
+                  <Users className="w-8 h-8 text-purple-600" />
                 </div>
+                <h3 className="text-xl font-bold mb-2">Tem uma Empresa?</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Cadastre-se gratuitamente e publique vagas.
+                </p>
+                <Link to="/conhecer-empresas">
+                  <Button className="bg-purple-600 hover:bg-purple-700">
+                    Saiba mais
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
