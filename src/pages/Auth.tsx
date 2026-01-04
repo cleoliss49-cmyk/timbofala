@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TIMBO_NEIGHBORHOODS } from '@/lib/neighborhoods';
+import { HoldCaptcha } from '@/components/ui/hold-captcha';
 
 const signUpSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -25,6 +26,7 @@ const signUpSchema = z.object({
   neighborhood: z.string().min(2, 'Bairro é obrigatório'),
   city: z.string().min(2, 'Cidade é obrigatória'),
   accepted_terms: z.literal(true, { errorMap: () => ({ message: 'Você deve aceitar os termos' }) }),
+  captcha_verified: z.literal(true, { errorMap: () => ({ message: 'Complete a verificação de segurança' }) }),
 });
 
 const signInSchema = z.object({
@@ -36,6 +38,7 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [captchaVerified, setCaptchaVerified] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -99,7 +102,7 @@ export default function Auth() {
           });
         }
       } else {
-        const result = signUpSchema.safeParse(formData);
+        const result = signUpSchema.safeParse({ ...formData, captcha_verified: captchaVerified });
         if (!result.success) {
           const fieldErrors: Record<string, string> = {};
           result.error.errors.forEach(err => {
@@ -318,7 +321,7 @@ export default function Auth() {
               </div>
 
               {!isLogin && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <Checkbox
                       id="accepted_terms"
@@ -346,6 +349,16 @@ export default function Auth() {
                       )}
                     </div>
                   </div>
+                  
+                  <HoldCaptcha 
+                    onVerified={() => {
+                      setCaptchaVerified(true);
+                      setErrors(prev => ({ ...prev, captcha_verified: '' }));
+                    }}
+                  />
+                  {errors.captcha_verified && (
+                    <p className="text-sm text-destructive text-center">{errors.captcha_verified}</p>
+                  )}
                 </div>
               )}
 
