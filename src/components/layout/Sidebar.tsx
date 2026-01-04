@@ -17,7 +17,9 @@ import {
   PlusCircle,
   Heart,
   Building2,
-  ShoppingBag
+  ShoppingBag,
+  Briefcase,
+  ShoppingCart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreatePostDialog } from '@/components/feed/CreatePostDialog';
@@ -29,7 +31,7 @@ interface SidebarProps {
 
 const mainMenuItems = [
   { icon: Home, label: 'Feed', path: '/feed' },
-  { icon: Building2, label: 'Comércio', path: '/empresas' },
+  { icon: ShoppingCart, label: 'Comércios', path: '/empresas' },
   { icon: ShoppingBag, label: 'Meus Pedidos', path: '/meus-pedidos' },
   { icon: Compass, label: 'Explorar', path: '/explore' },
   { icon: Search, label: 'Buscar', path: '/search' },
@@ -43,6 +45,11 @@ const communityMenuItems = [
   { icon: Heart, label: 'Paquera', path: '/paquera' },
 ];
 
+const jobsMenuItems = [
+  { icon: Building2, label: 'Empresas', path: '/companies' },
+  { icon: Briefcase, label: 'Vagas', path: '/vagas' },
+];
+
 const personalMenuItems = [
   { icon: Bookmark, label: 'Salvos', path: '/saved' },
   { icon: Settings, label: 'Configurações', path: '/settings' },
@@ -53,21 +60,34 @@ export function Sidebar({ className, onClose }: SidebarProps) {
   const { user, profile } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
+  const [hasCompanyProfile, setHasCompanyProfile] = useState(false);
 
   useEffect(() => {
     if (user) {
-      checkBusinessProfile();
+      checkProfiles();
     }
   }, [user]);
 
-  const checkBusinessProfile = async () => {
-    const { data } = await supabase
+  const checkProfiles = async () => {
+    if (!user) return;
+
+    // Check business profile (comércios)
+    const { data: businessData } = await supabase
       .from('business_profiles')
       .select('id')
-      .eq('user_id', user!.id)
+      .eq('user_id', user.id)
       .maybeSingle();
     
-    setHasBusinessProfile(!!data);
+    setHasBusinessProfile(!!businessData);
+
+    // Check company profile (empresas)
+    const { data: companyData } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    setHasCompanyProfile(!!companyData);
   };
 
   const renderMenuItem = (item: typeof mainMenuItems[0]) => {
@@ -130,6 +150,16 @@ export function Sidebar({ className, onClose }: SidebarProps) {
             {mainMenuItems.map(renderMenuItem)}
           </nav>
 
+          {/* Jobs & Companies section */}
+          <div>
+            <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Emprego
+            </h3>
+            <nav className="space-y-1">
+              {jobsMenuItems.map(renderMenuItem)}
+            </nav>
+          </div>
+
           {/* Community section */}
           <div>
             <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -150,26 +180,44 @@ export function Sidebar({ className, onClose }: SidebarProps) {
             </nav>
           </div>
 
-          {/* Business section */}
+          {/* Business sections */}
           {user && (
             <div>
               <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Empresarial
+                Meus Negócios
               </h3>
               <nav className="space-y-1">
+                {/* Comércios (existing system) */}
                 <Link
                   to={hasBusinessProfile ? '/empresa/gerenciar' : '/empresa/criar'}
                   onClick={onClose}
                   className={cn(
                     'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
-                    location.pathname.startsWith('/empresa')
+                    (location.pathname === '/empresa/gerenciar' || location.pathname === '/empresa/criar')
+                      ? 'gradient-primary text-primary-foreground shadow-soft'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110" />
+                  <span className="flex-1">
+                    {hasBusinessProfile ? 'Meu Comércio' : 'Criar Comércio'}
+                  </span>
+                </Link>
+
+                {/* Empresas (new system) */}
+                <Link
+                  to={hasCompanyProfile ? '/empresa/painel' : '/empresa/cadastrar'}
+                  onClick={onClose}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
+                    (location.pathname === '/empresa/painel' || location.pathname === '/empresa/cadastrar')
                       ? 'gradient-primary text-primary-foreground shadow-soft'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
                 >
                   <Building2 className="w-5 h-5 transition-transform group-hover:scale-110" />
                   <span className="flex-1">
-                    {hasBusinessProfile ? 'Minha Empresa' : 'Criar Conta Empresarial'}
+                    {hasCompanyProfile ? 'Minha Empresa' : 'Cadastrar Empresa'}
                   </span>
                 </Link>
               </nav>

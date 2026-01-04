@@ -11,9 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Upload, Building2 } from 'lucide-react';
-import { COMPANY_CATEGORIES } from '@/lib/companyCategories';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Upload, Building2, CheckCircle, Briefcase, Users, Image } from 'lucide-react';
+import { COMPANY_CATEGORIES, COMPANY_SIZES } from '@/lib/companyCategories';
 import { NEIGHBORHOODS } from '@/lib/neighborhoods';
+import { CompanyTermsDialog } from '@/components/company/CompanyTermsDialog';
 
 export default function CompanySetup() {
   const { user } = useAuth();
@@ -22,12 +24,15 @@ export default function CompanySetup() {
   
   const [loading, setLoading] = useState(false);
   const [checkingExisting, setCheckingExisting] = useState(true);
+  const [showTerms, setShowTerms] = useState(true);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     category: '',
     subcategory: '',
+    size: '',
     phone: '',
     whatsapp: '',
     email: '',
@@ -109,6 +114,15 @@ export default function CompanySetup() {
       .getPublicUrl(data.path);
     
     return publicUrl;
+  };
+
+  const handleTermsAccept = () => {
+    setTermsAccepted(true);
+    setShowTerms(false);
+  };
+
+  const handleTermsDecline = () => {
+    navigate(-1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -202,20 +216,59 @@ export default function CompanySetup() {
 
   return (
     <MainLayout>
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
+      <CompanyTermsDialog
+        open={showTerms && !termsAccepted}
+        onAccept={handleTermsAccept}
+        onDecline={handleTermsDecline}
+      />
+
+      <div className="max-w-3xl mx-auto">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+            <Building2 className="w-8 h-8 text-primary" />
+          </div>
           <h1 className="text-2xl font-bold">Cadastrar Empresa</h1>
-          <p className="text-muted-foreground">
-            Cadastre sua empresa para publicar vagas e criar seu portfólio
+          <p className="text-muted-foreground mt-2">
+            Cadastre sua empresa gratuitamente para publicar vagas e criar seu portfólio
           </p>
+          <Badge variant="secondary" className="mt-3 gap-1">
+            <CheckCircle className="w-3 h-3" />
+            100% Gratuito
+          </Badge>
+        </div>
+
+        {/* Benefits */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="bg-muted/50">
+            <CardContent className="p-4 text-center">
+              <Briefcase className="w-8 h-8 mx-auto text-primary mb-2" />
+              <h3 className="font-semibold text-sm">Publique Vagas</h3>
+              <p className="text-xs text-muted-foreground">Encontre talentos da região</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-muted/50">
+            <CardContent className="p-4 text-center">
+              <Image className="w-8 h-8 mx-auto text-primary mb-2" />
+              <h3 className="font-semibold text-sm">Crie seu Portfólio</h3>
+              <p className="text-xs text-muted-foreground">Mostre seus trabalhos</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-muted/50">
+            <CardContent className="p-4 text-center">
+              <Users className="w-8 h-8 mx-auto text-primary mb-2" />
+              <h3 className="font-semibold text-sm">Conecte-se</h3>
+              <p className="text-xs text-muted-foreground">Com a comunidade local</p>
+            </CardContent>
+          </Card>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Informações Básicas</CardTitle>
-              <CardDescription>Dados principais da empresa</CardDescription>
+              <CardTitle>Informações da Empresa</CardTitle>
+              <CardDescription>Dados principais do seu negócio</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -229,23 +282,44 @@ export default function CompanySetup() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="category">Categoria *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COMPANY_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.icon} {cat.label} - {cat.description}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Categoria *</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPANY_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.icon} {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="size">Porte da Empresa</Label>
+                  <Select
+                    value={formData.size}
+                    onValueChange={(value) => setFormData({ ...formData, size: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o porte" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMPANY_SIZES.map((size) => (
+                        <SelectItem key={size.value} value={size.value}>
+                          {size.label} - {size.description}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -325,7 +399,7 @@ export default function CompanySetup() {
           <Card>
             <CardHeader>
               <CardTitle>Contato</CardTitle>
-              <CardDescription>Informações de contato</CardDescription>
+              <CardDescription>Como os candidatos podem entrar em contato</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -449,14 +523,17 @@ export default function CompanySetup() {
             </CardContent>
           </Card>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" size="lg" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Cadastrando...
               </>
             ) : (
-              'Cadastrar Empresa'
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Cadastrar Empresa Gratuitamente
+              </>
             )}
           </Button>
         </form>
