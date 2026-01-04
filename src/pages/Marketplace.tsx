@@ -250,7 +250,10 @@ export default function Marketplace() {
           .from('products')
           .upload(fileName, selectedImage);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Erro no upload:', uploadError);
+          throw new Error('Erro ao enviar imagem: ' + uploadError.message);
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('products')
@@ -263,31 +266,44 @@ export default function Marketplace() {
         const { error } = await supabase
           .from('products')
           .update({
-            title: formData.title,
-            description: formData.description || null,
+            title: formData.title.trim(),
+            description: formData.description?.trim() || null,
             price: parseFloat(formData.price),
             category: formData.category,
             condition: formData.condition,
-            location: formData.location || null,
+            location: formData.location?.trim() || null,
             image_url: imageUrl,
           })
           .eq('id', editingProduct.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Erro ao atualizar:', error);
+          throw new Error('Erro ao atualizar anúncio: ' + error.message);
+        }
         toast({ title: 'Anúncio atualizado!' });
       } else {
-        const { error } = await supabase.from('products').insert({
+        const productData = {
           user_id: user.id,
-          title: formData.title,
-          description: formData.description || null,
+          title: formData.title.trim(),
+          description: formData.description?.trim() || null,
           price: parseFloat(formData.price),
           category: formData.category,
           condition: formData.condition,
-          location: formData.location || null,
+          location: formData.location?.trim() || null,
           image_url: imageUrl,
-        });
+          is_sold: false,
+        };
+        
+        console.log('Inserindo produto:', productData);
+        
+        const { data, error } = await supabase.from('products').insert(productData).select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Erro ao inserir produto:', error);
+          throw new Error('Erro ao criar anúncio: ' + error.message);
+        }
+        
+        console.log('Produto criado:', data);
         toast({ title: 'Anúncio criado com sucesso!' });
       }
 
@@ -296,7 +312,12 @@ export default function Marketplace() {
       fetchProducts();
       fetchMyProducts();
     } catch (error: any) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      console.error('Erro completo:', error);
+      toast({ 
+        title: 'Não foi possível salvar o produto', 
+        description: error.message || 'Tente novamente',
+        variant: 'destructive' 
+      });
     } finally {
       setSubmitting(false);
     }
