@@ -3,60 +3,20 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   MessageCircle, ArrowLeft, Home, Users, Store, Calendar, 
-  Heart, ShoppingBag, MapPin, ArrowRight,
-  Sparkles, ShoppingCart, Building2, Compass
+  Heart, ShoppingBag, ArrowRight,
+  Sparkles, ShoppingCart, Building2, Compass, Briefcase
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const mainFeatures = [
-  {
-    icon: Home,
-    title: 'Feed',
-    description: 'Publicações da comunidade',
-    gradient: 'from-blue-500 to-cyan-500'
-  },
-  {
-    icon: Heart,
-    title: 'Paquera',
-    description: 'Encontre pessoas especiais',
-    gradient: 'from-rose-500 to-pink-500'
-  },
-  {
-    icon: Users,
-    title: 'Comunidade',
-    description: 'Grupos e discussões',
-    gradient: 'from-indigo-500 to-blue-500'
-  },
-  {
-    icon: Building2,
-    title: 'Empresas',
-    description: 'Serviços e vagas',
-    gradient: 'from-purple-500 to-violet-500'
-  },
-  {
-    icon: ShoppingCart,
-    title: 'Comércios',
-    description: 'Compre de lojas locais',
-    gradient: 'from-emerald-500 to-green-500'
-  },
-  {
-    icon: ShoppingBag,
-    title: 'Marketplace',
-    description: 'Compra e venda',
-    gradient: 'from-orange-500 to-amber-500'
-  },
-  {
-    icon: Compass,
-    title: 'Explorar',
-    description: 'Descubra novidades',
-    gradient: 'from-teal-500 to-cyan-500'
-  },
-  {
-    icon: Calendar,
-    title: 'Eventos',
-    description: 'O que rola na cidade',
-    gradient: 'from-violet-500 to-purple-500'
-  }
+const features = [
+  { icon: Home, title: 'Feed', gradient: 'from-blue-500 to-cyan-500' },
+  { icon: Heart, title: 'Paquera', gradient: 'from-rose-500 to-pink-500' },
+  { icon: Users, title: 'Comunidade', gradient: 'from-indigo-500 to-blue-500' },
+  { icon: Building2, title: 'Empresas', gradient: 'from-purple-500 to-violet-500' },
+  { icon: ShoppingCart, title: 'Comércios', gradient: 'from-emerald-500 to-green-500' },
+  { icon: Briefcase, title: 'Vagas', gradient: 'from-amber-500 to-orange-500' },
+  { icon: ShoppingBag, title: 'Marketplace', gradient: 'from-teal-500 to-cyan-500' },
+  { icon: Calendar, title: 'Eventos', gradient: 'from-violet-500 to-purple-500' },
 ];
 
 export default function ConhecerPlataforma() {
@@ -65,23 +25,15 @@ export default function ConhecerPlataforma() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Background effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+    <div className="min-h-screen bg-background overflow-hidden">
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none">
         <div 
-          className="absolute w-[800px] h-[800px] rounded-full blur-[120px] opacity-25"
+          className="absolute w-[800px] h-[800px] rounded-full blur-[150px] opacity-20"
           style={{
             background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)',
-            top: '-20%',
-            right: '-10%',
-          }}
-        />
-        <div 
-          className="absolute w-[600px] h-[600px] rounded-full blur-[100px] opacity-15"
-          style={{
-            background: 'radial-gradient(circle, hsl(262 83% 58%) 0%, transparent 70%)',
-            bottom: '-10%',
-            left: '-10%',
+            top: '-30%',
+            right: '-20%',
           }}
         />
       </div>
@@ -107,20 +59,14 @@ export default function ConhecerPlataforma() {
       </header>
 
       <main className="relative z-10">
-        {/* Hero Section - Compact */}
+        {/* Hero */}
         <section className="py-20 px-4">
-          <div className="container mx-auto max-w-4xl text-center">
+          <div className="container mx-auto max-w-3xl text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
               className="space-y-6"
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span className="text-primary font-medium">Timbó, SC</span>
-              </div>
-              
               <h1 className="text-5xl sm:text-6xl font-display font-bold leading-[1.1]">
                 A rede social
                 <br />
@@ -143,36 +89,30 @@ export default function ConhecerPlataforma() {
           </div>
         </section>
 
-        {/* Features Grid */}
+        {/* Features */}
         <section className="py-16 px-4">
-          <div className="container mx-auto max-w-5xl">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl sm:text-4xl font-display font-bold mb-3 flex items-center justify-center gap-3">
+          <div className="container mx-auto max-w-4xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-display font-bold flex items-center justify-center gap-3">
                 <Sparkles className="w-8 h-8 text-primary" />
                 Tudo em um só lugar
               </h2>
-            </motion.div>
+            </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {mainFeatures.map((feature, index) => (
+              {features.map((feature, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.05 }}
-                  className="group bg-card hover:bg-card/80 border border-border/50 rounded-2xl p-5 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-xl"
+                  className="group bg-card border border-border/50 rounded-2xl p-5 text-center hover:shadow-xl transition-all"
                 >
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
-                    <feature.icon className="w-7 h-7 text-white" />
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mx-auto mb-3`}>
+                    <feature.icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="font-bold mb-1">{feature.title}</h3>
-                  <p className="text-xs text-muted-foreground">{feature.description}</p>
+                  <h3 className="font-bold text-sm">{feature.title}</h3>
                 </motion.div>
               ))}
             </div>
@@ -181,18 +121,18 @@ export default function ConhecerPlataforma() {
 
         {/* Business CTAs */}
         <section className="py-16 px-4">
-          <div className="container mx-auto max-w-4xl">
+          <div className="container mx-auto max-w-3xl">
             <div className="grid sm:grid-cols-2 gap-6">
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/30 rounded-2xl p-8"
+                className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/30 rounded-2xl p-6"
               >
-                <Store className="w-12 h-12 text-emerald-600 mb-4" />
-                <h3 className="text-xl font-bold mb-2">Tem um Comércio?</h3>
-                <p className="text-muted-foreground mb-4 text-sm">
-                  Venda seus produtos online para toda a cidade.
+                <Store className="w-10 h-10 text-emerald-600 mb-3" />
+                <h3 className="text-lg font-bold mb-2">Tem um Comércio?</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Venda seus produtos online.
                 </p>
                 <Link to="/conhecer-empresas">
                   <Button className="bg-emerald-600 hover:bg-emerald-700">
@@ -205,12 +145,12 @@ export default function ConhecerPlataforma() {
                 initial={{ opacity: 0, x: 20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                className="bg-gradient-to-br from-purple-500/10 to-violet-500/10 border border-purple-500/30 rounded-2xl p-8"
+                className="bg-gradient-to-br from-purple-500/10 to-violet-500/10 border border-purple-500/30 rounded-2xl p-6"
               >
-                <Building2 className="w-12 h-12 text-purple-600 mb-4" />
-                <h3 className="text-xl font-bold mb-2">Tem uma Empresa?</h3>
-                <p className="text-muted-foreground mb-4 text-sm">
-                  Cadastre gratuitamente e publique vagas.
+                <Building2 className="w-10 h-10 text-purple-600 mb-3" />
+                <h3 className="text-lg font-bold mb-2">Tem uma Empresa?</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Cadastre grátis e publique vagas.
                 </p>
                 <Link to="/conhecer-empresas">
                   <Button className="bg-purple-600 hover:bg-purple-700">
@@ -222,19 +162,16 @@ export default function ConhecerPlataforma() {
           </div>
         </section>
 
-        {/* Final CTA */}
+        {/* CTA */}
         <section className="py-16 px-4">
-          <div className="container mx-auto max-w-3xl">
+          <div className="container mx-auto max-w-2xl text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center py-12 px-8 rounded-3xl bg-gradient-to-br from-primary/10 to-secondary/10 border border-border/50"
+              className="py-12 px-8 rounded-3xl bg-gradient-to-br from-primary/10 to-secondary/10 border border-border/50"
             >
-              <h2 className="text-3xl font-bold mb-4">Pronto para começar?</h2>
-              <p className="text-muted-foreground mb-6">
-                Crie sua conta gratuita e faça parte da comunidade!
-              </p>
+              <h2 className="text-2xl font-bold mb-4">Pronto para começar?</h2>
               <Link to="/auth">
                 <Button size="lg" className="h-12 px-8">
                   Criar minha conta grátis
@@ -245,11 +182,8 @@ export default function ConhecerPlataforma() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="py-8 border-t border-border/50">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Timbó Fala - A rede social de Timbó, SC
-        </div>
+      <footer className="py-6 border-t border-border/50 text-center text-sm text-muted-foreground">
+        © {new Date().getFullYear()} Timbó Fala
       </footer>
     </div>
   );

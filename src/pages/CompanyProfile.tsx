@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useLocation, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,8 +24,10 @@ import {
   Wrench,
   Settings,
   ExternalLink,
+  PenSquare,
 } from 'lucide-react';
 import { getCategoryLabel, getCategoryIcon, getEmploymentTypeLabel, getWorkModeLabel } from '@/lib/companyCategories';
+import { CompanyPostCard } from '@/components/company/CompanyPostCard';
 
 interface Company {
   id: string;
@@ -79,6 +81,13 @@ interface Service {
   price_type: string;
 }
 
+interface CompanyPost {
+  id: string;
+  content: string | null;
+  image_url: string | null;
+  created_at: string;
+}
+
 export default function CompanyProfile() {
   const { slug } = useParams();
   const { user } = useAuth();
@@ -88,6 +97,7 @@ export default function CompanyProfile() {
   const [jobs, setJobs] = useState<JobListing[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [posts, setPosts] = useState<CompanyPost[]>([]);
 
   const isOwner = company?.user_id === user?.id;
 
@@ -136,6 +146,15 @@ export default function CompanyProfile() {
         .order('sort_order', { ascending: true });
 
       setServices(servicesData || []);
+
+      // Fetch posts
+      const { data: postsData } = await supabase
+        .from('company_posts')
+        .select('*')
+        .eq('company_id', companyData.id)
+        .order('created_at', { ascending: false });
+
+      setPosts(postsData || []);
     } catch (error) {
       console.error('Error fetching company:', error);
     } finally {
@@ -257,8 +276,12 @@ export default function CompanyProfile() {
             )}
 
             {/* Tabs */}
-            <Tabs defaultValue="jobs">
+            <Tabs defaultValue="posts">
               <TabsList className="w-full justify-start">
+                <TabsTrigger value="posts" className="gap-2">
+                  <PenSquare className="w-4 h-4" />
+                  Publicações ({posts.length})
+                </TabsTrigger>
                 <TabsTrigger value="jobs" className="gap-2">
                   <Briefcase className="w-4 h-4" />
                   Vagas ({jobs.length})
@@ -276,6 +299,29 @@ export default function CompanyProfile() {
                   </TabsTrigger>
                 )}
               </TabsList>
+
+              <TabsContent value="posts" className="space-y-4 mt-4">
+                {posts.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-6 text-center text-muted-foreground">
+                      Nenhuma publicação ainda.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  posts.map((post) => (
+                    <CompanyPostCard
+                      key={post.id}
+                      post={post}
+                      company={{
+                        id: company.id,
+                        name: company.name,
+                        slug: company.slug,
+                        logo_url: company.logo_url,
+                      }}
+                    />
+                  ))
+                )}
+              </TabsContent>
 
               <TabsContent value="jobs" className="space-y-4 mt-4">
                 {jobs.length === 0 ? (
