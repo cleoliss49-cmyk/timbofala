@@ -54,7 +54,7 @@ export function PaqueraPaymentDialog({
   const pixKey = '09607890906';
   const pixKeyType = 'cpf';
   const pixHolderName = 'Bruno Eduardo Ochner';
-  const amount = 19.90;
+  const amount = 29.90;
   
   // Generate unique PIX identifier using profile ID
   const pixIdentifier = `PAQ-${paqueraProfileId.slice(0, 8).toUpperCase()}`;
@@ -237,7 +237,9 @@ export function PaqueraPaymentDialog({
             </div>
             <Progress value={progressPercent} className="h-2" />
             <p className="text-xs text-muted-foreground text-center">
-              Você atingiu o limite gratuito de interações
+              {interactionsUsed >= interactionsLimit 
+                ? 'Você atingiu o limite gratuito de 10 interações'
+                : 'Sua assinatura expirou. Renove para continuar!'}
             </p>
           </div>
 
