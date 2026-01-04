@@ -343,12 +343,27 @@ export default function Paquera() {
     }
 
     // Increment interaction count
-    const { data: interactionResult } = await supabase.rpc('increment_paquera_interaction', {
+    const { data: interactionResult, error: interactionError } = await supabase.rpc('increment_paquera_interaction', {
       p_profile_id: myPaqueraProfile.id
     });
 
+    console.log('Interaction result:', interactionResult, 'error:', interactionError);
+
+    if (interactionError) {
+      console.error('Error incrementing interaction:', interactionError);
+      setSwipeDirection(null);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao processar interação. Tente novamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (interactionResult && interactionResult.length > 0) {
       const result = interactionResult[0];
+      console.log('Interaction check:', result);
+      
       if (result.limit_reached) {
         setAccessInfo(prev => prev ? { ...prev, needsPayment: true, canInteract: false } : null);
         setShowPaymentDialog(true);
@@ -366,12 +381,16 @@ export default function Paquera() {
     }
 
     try {
+      console.log('Inserting like:', { liker_id: myPaqueraProfile.id, liked_id: targetProfile.id });
+      
       const { error } = await supabase
         .from('paquera_likes')
         .insert({
           liker_id: myPaqueraProfile.id,
           liked_id: targetProfile.id,
         });
+
+      console.log('Like insert result:', error);
 
       if (error) throw error;
 
@@ -405,13 +424,19 @@ export default function Paquera() {
         }
       }, 300);
     } catch (error: any) {
+      console.error('Like error:', error);
       setSwipeDirection(null);
       if (error.code === '23505') {
+        // Duplicate key - already liked
+        toast({
+          title: 'Já curtiu',
+          description: 'Você já curtiu este perfil anteriormente.',
+        });
         setCurrentIndex(prev => prev + 1);
       } else {
         toast({
           title: 'Erro',
-          description: 'Não foi possível curtir este perfil.',
+          description: `Não foi possível curtir: ${error.message || 'Erro desconhecido'}`,
           variant: 'destructive',
         });
       }

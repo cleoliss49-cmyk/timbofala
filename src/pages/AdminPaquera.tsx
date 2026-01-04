@@ -266,18 +266,31 @@ export default function AdminPaquera() {
       .select('*', { count: 'exact', head: true });
 
     const now = new Date();
+    
+    // Premium = active subscription with future expires_at
     const activeSubscriptions = subscriptions?.filter(
       (s) => s.status === 'active' && s.expires_at && new Date(s.expires_at) > now
     ).length || 0;
 
+    // Free phase = no subscription OR has subscription but not premium and not paused
     const freePhase = allProfiles?.filter((p) => {
       const sub = subscriptions?.find((s) => s.paquera_profile_id === p.id);
-      return !sub || (sub.interactions_count < sub.interactions_limit && sub.status !== 'active');
+      if (!sub) return true; // No subscription = free phase
+      const isPremium = sub.status === 'active' && sub.expires_at && new Date(sub.expires_at) > now;
+      if (isPremium) return false;
+      const isExpired = sub.expires_at && new Date(sub.expires_at) < now;
+      const reachedLimit = sub.interactions_count >= sub.interactions_limit;
+      return !isExpired && !reachedLimit;
     }).length || 0;
 
-    const pausedUsers = subscriptions?.filter((s) => {
-      const isExpired = s.expires_at && new Date(s.expires_at) < now;
-      const reachedLimit = s.interactions_count >= s.interactions_limit && s.status !== 'active';
+    // Paused = expired OR reached limit (and not premium)
+    const pausedUsers = allProfiles?.filter((p) => {
+      const sub = subscriptions?.find((s) => s.paquera_profile_id === p.id);
+      if (!sub) return false;
+      const isPremium = sub.status === 'active' && sub.expires_at && new Date(sub.expires_at) > now;
+      if (isPremium) return false;
+      const isExpired = sub.expires_at && new Date(sub.expires_at) < now;
+      const reachedLimit = sub.interactions_count >= sub.interactions_limit;
       return isExpired || reachedLimit;
     }).length || 0;
 
@@ -422,22 +435,35 @@ export default function AdminPaquera() {
   };
 
   // Filter profiles by category
+  // Fase Livre = no subscription OR pending/free status with interactions remaining
   const freePhaseProfiles = profiles.filter((p) => {
     const sub = p.subscription;
-    return !sub || (sub.interactions_count < sub.interactions_limit && sub.status !== 'active');
+    // No subscription = new user in free phase
+    if (!sub) return true;
+    // Has subscription but not premium (no expires_at or status not active)
+    const isPremium = sub.status === 'active' && sub.expires_at && new Date(sub.expires_at) > new Date();
+    if (isPremium) return false;
+    // Not paused (hasn't reached limit and not expired)
+    const isExpired = sub.expires_at && new Date(sub.expires_at) < new Date();
+    const reachedLimit = sub.interactions_count >= sub.interactions_limit;
+    return !isExpired && !reachedLimit;
   });
 
+  // Premium = active subscription with future expires_at
   const premiumProfiles = profiles.filter((p) => {
     const sub = p.subscription;
     return sub?.status === 'active' && sub.expires_at && new Date(sub.expires_at) > new Date();
   });
 
+  // Pausados = reached limit OR subscription expired
   const pausedProfiles = profiles.filter((p) => {
     const sub = p.subscription;
     if (!sub) return false;
     const isExpired = sub.expires_at && new Date(sub.expires_at) < new Date();
-    const reachedLimit = sub.interactions_count >= sub.interactions_limit && sub.status !== 'active';
-    return isExpired || reachedLimit;
+    const reachedLimit = sub.interactions_count >= sub.interactions_limit;
+    // Paused if expired OR reached limit (and not premium active)
+    const isPremium = sub.status === 'active' && sub.expires_at && new Date(sub.expires_at) > new Date();
+    return !isPremium && (isExpired || reachedLimit);
   });
 
   const pendingPaymentsList = payments.filter((p) => p.status === 'pending');
