@@ -1583,6 +1583,42 @@ export type Database = {
           },
         ]
       }
+      paquera_profile_views: {
+        Row: {
+          created_at: string
+          id: string
+          viewed_id: string
+          viewer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          viewed_id: string
+          viewer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          viewed_id?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paquera_profile_views_viewed_id_fkey"
+            columns: ["viewed_id"]
+            isOneToOne: false
+            referencedRelation: "paquera_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paquera_profile_views_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "paquera_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paquera_profiles: {
         Row: {
           accepted_terms: boolean | null

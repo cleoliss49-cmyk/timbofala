@@ -185,15 +185,30 @@ export default function Paquera() {
       .select('*', { count: 'exact', head: true })
       .eq('user2_id', myProfileId);
 
-    // Profile views = likes received (real metric based on actual interactions)
-    // Each like represents at least one view, so we use likes as a proxy for views
-    const actualViews = (likesReceived || 0);
+    // Profile views (REAL data from paquera_profile_views table)
+    const { count: profileViews } = await supabase
+      .from('paquera_profile_views')
+      .select('*', { count: 'exact', head: true })
+      .eq('viewed_id', myProfileId);
 
     setStats({
       totalLikes: likesReceived || 0,
       totalMatches: (matches1 || 0) + (matches2 || 0),
-      profileViews: actualViews,
+      profileViews: profileViews || 0,
     });
+  };
+
+  // Track profile view when user sees a profile
+  const trackProfileView = async (viewedProfileId: string) => {
+    if (!myPaqueraProfile) return;
+    
+    await supabase
+      .from('paquera_profile_views')
+      .upsert({
+        viewer_id: myPaqueraProfile.id,
+        viewed_id: viewedProfileId,
+      }, { onConflict: 'viewer_id,viewed_id' })
+      .select();
   };
 
   const fetchMyLikes = async (myProfileId: string) => {
@@ -532,7 +547,7 @@ export default function Paquera() {
         {myPaqueraProfile && (
           <Card className="mb-4 bg-gradient-to-r from-pink-500/10 to-rose-500/10 border-pink-200 dark:border-pink-800">
             <CardContent className="py-3 px-4">
-              <div className="flex justify-around">
+                <div className="flex justify-around items-center">
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 text-pink-600 dark:text-pink-400">
                     <ThumbsUp className="w-4 h-4" />
@@ -540,21 +555,24 @@ export default function Paquera() {
                   </div>
                   <p className="text-xs text-muted-foreground">Curtidas</p>
                 </div>
-                <div className="text-center">
+                <button 
+                  onClick={() => setShowMatches(true)}
+                  className="text-center hover:bg-pink-500/10 rounded-lg p-2 -m-2 transition-colors cursor-pointer"
+                >
                   <div className="flex items-center justify-center gap-1 text-rose-600 dark:text-rose-400">
                     <Heart className="w-4 h-4" />
                     <span className="font-bold">{stats.totalMatches}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Matches</p>
-                </div>
+                  <p className="text-xs text-muted-foreground">Pares</p>
+                </button>
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-1 text-purple-600 dark:text-purple-400">
                     <Eye className="w-4 h-4" />
                     <span className="font-bold">{stats.profileViews}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Interações</p>
+                  <p className="text-xs text-muted-foreground">Visualizações</p>
                 </div>
-                {accessInfo && accessInfo.status !== 'active' && (
+                {accessInfo && accessInfo.status !== 'premium' && (
                   <div className="text-center">
                     <div className={`flex items-center justify-center gap-1 ${
                       accessInfo.interactionsRemaining <= 3 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
@@ -667,6 +685,10 @@ export default function Paquera() {
                 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
+                onAnimationStart={() => {
+                  // Track view when profile is shown
+                  trackProfileView(currentProfile.id);
+                }}
               >
                 <Card className="overflow-hidden relative">
                   {/* Compatibility Badge */}
@@ -735,15 +757,15 @@ export default function Paquera() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Action Buttons */}
-            <div className="flex justify-center items-center gap-3">
+            {/* Action Buttons - Ver Perfil removido para privacidade */}
+            <div className="flex justify-center items-center gap-4">
               <Button
                 variant="outline"
                 size="lg"
-                className="w-14 h-14 rounded-full border-2 border-red-300 hover:bg-red-50 hover:border-red-400 transition-all"
+                className="w-16 h-16 rounded-full border-2 border-red-300 hover:bg-red-50 hover:border-red-400 dark:hover:bg-red-950/30 transition-all"
                 onClick={handlePass}
               >
-                <X className="w-7 h-7 text-red-500" />
+                <X className="w-8 h-8 text-red-500" />
               </Button>
               
               <Button
@@ -757,32 +779,18 @@ export default function Paquera() {
               
               <Button
                 size="lg"
-                className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 shadow-lg transition-all"
+                className="w-20 h-20 rounded-full bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 shadow-lg transition-all"
                 onClick={() => handleLike(false)}
               >
-                <Heart className="w-8 h-8 text-white" />
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-14 h-14 rounded-full border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-all"
-                onClick={() => {
-                  if (currentProfile.user_profile?.username) {
-                    navigate(`/profile/${currentProfile.user_profile.username}`);
-                  }
-                }}
-              >
-                <User className="w-7 h-7 text-blue-500" />
+                <Heart className="w-10 h-10 text-white" />
               </Button>
             </div>
 
             {/* Action hints */}
-            <div className="flex justify-center gap-6 text-xs text-muted-foreground">
+            <div className="flex justify-center gap-8 text-xs text-muted-foreground">
               <span>Passar</span>
               <span className={!superLikeAvailable ? 'opacity-50' : ''}>Super Like</span>
               <span>Curtir</span>
-              <span>Ver Perfil</span>
             </div>
           </div>
         ) : null}
