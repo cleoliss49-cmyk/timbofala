@@ -36,6 +36,15 @@ import ConhecerPlataforma from "./pages/ConhecerPlataforma";
 import ConhecerEmpresas from "./pages/ConhecerEmpresas";
 import AdminCommissions from "./pages/AdminCommissions";
 import TermsOfService from "./pages/TermsOfService";
+// Empresas (novo sistema separado)
+import Companies from "./pages/Companies";
+import CompanySetup from "./pages/CompanySetup";
+import CompanyDashboard from "./pages/CompanyDashboard";
+import CompanyProfile from "./pages/CompanyProfile";
+import Jobs from "./pages/Jobs";
+import JobDetails from "./pages/JobDetails";
+import CreateJob from "./pages/CreateJob";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -64,6 +73,7 @@ const App = () => (
               <Route path="/saved" element={<Saved />} />
               <Route path="/post/:postId" element={<Post />} />
               <Route path="/paquera" element={<Paquera />} />
+              {/* Comércios (sistema existente) */}
               <Route path="/empresas" element={<Businesses />} />
               <Route path="/commerce" element={<Businesses />} />
               <Route path="/empresa/criar" element={<BusinessSetup />} />
@@ -72,6 +82,15 @@ const App = () => (
               <Route path="/empresa/:slug" element={<Business />} />
               <Route path="/empresa/:businessSlug/produto/:productId" element={<BusinessProduct />} />
               <Route path="/meus-pedidos" element={<MyOrders />} />
+              {/* Empresas (novo sistema separado) */}
+              <Route path="/companies" element={<Companies />} />
+              <Route path="/empresa/cadastrar" element={<CompanySetup />} />
+              <Route path="/empresa/painel" element={<CompanyDashboard />} />
+              <Route path="/company/:slug" element={<CompanyProfile />} />
+              <Route path="/vagas" element={<Jobs />} />
+              <Route path="/vagas/:id" element={<JobDetails />} />
+              <Route path="/empresa/vagas/nova" element={<CreateJob />} />
+              {/* Outras */}
               <Route path="/conhecer" element={<ConhecerPlataforma />} />
               <Route path="/conhecer-empresas" element={<ConhecerEmpresas />} />
               <Route path="/termos" element={<TermsOfService />} />
