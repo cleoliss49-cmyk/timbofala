@@ -17,4 +17,6 @@ export const TIMBO_NEIGHBORHOODS = [
   'Vila Germer',
 ] as const;
 
+export const NEIGHBORHOODS = TIMBO_NEIGHBORHOODS;
+
 export type TimboNeighborhood = typeof TIMBO_NEIGHBORHOODS[number];

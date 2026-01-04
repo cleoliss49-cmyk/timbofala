@@ -1125,6 +1125,213 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          address: string | null
+          category: string
+          city: string
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          facebook: string | null
+          id: string
+          instagram: string | null
+          is_active: boolean
+          is_verified: boolean
+          linkedin: string | null
+          logo_url: string | null
+          name: string
+          neighborhood: string | null
+          phone: string | null
+          slug: string
+          subcategory: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          address?: string | null
+          category?: string
+          city?: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          facebook?: string | null
+          id?: string
+          instagram?: string | null
+          is_active?: boolean
+          is_verified?: boolean
+          linkedin?: string | null
+          logo_url?: string | null
+          name: string
+          neighborhood?: string | null
+          phone?: string | null
+          slug: string
+          subcategory?: string | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          address?: string | null
+          category?: string
+          city?: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          facebook?: string | null
+          id?: string
+          instagram?: string | null
+          is_active?: boolean
+          is_verified?: boolean
+          linkedin?: string | null
+          logo_url?: string | null
+          name?: string
+          neighborhood?: string | null
+          phone?: string | null
+          slug?: string
+          subcategory?: string | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      company_gallery: {
+        Row: {
+          caption: string | null
+          company_id: string
+          created_at: string
+          id: string
+          image_url: string
+          sort_order: number | null
+        }
+        Insert: {
+          caption?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+          sort_order?: number | null
+        }
+        Update: {
+          caption?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_gallery_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_portfolio: {
+        Row: {
+          category: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          project_url: string | null
+          sort_order: number | null
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          project_url?: string | null
+          sort_order?: number | null
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          project_url?: string | null
+          sort_order?: number | null
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_portfolio_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_services: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_featured: boolean | null
+          name: string
+          price: number | null
+          price_type: string | null
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_featured?: boolean | null
+          name: string
+          price?: number | null
+          price_type?: string | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_featured?: boolean | null
+          name?: string
+          price?: number | null
+          price_type?: string | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_services_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupon_usage: {
         Row: {
           coupon_id: string
@@ -1294,6 +1501,133 @@ export type Database = {
             columns: ["following_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_applications: {
+        Row: {
+          cover_letter: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          job_id: string
+          notes: string | null
+          phone: string | null
+          resume_url: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cover_letter?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          job_id: string
+          notes?: string | null
+          phone?: string | null
+          resume_url: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cover_letter?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          job_id?: string
+          notes?: string | null
+          phone?: string | null
+          resume_url?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_listings: {
+        Row: {
+          applications_count: number
+          benefits: string | null
+          city: string
+          company_id: string
+          created_at: string
+          description: string
+          employment_type: string
+          expires_at: string | null
+          hide_salary: boolean | null
+          id: string
+          is_active: boolean
+          neighborhood: string | null
+          requirements: string | null
+          salary_max: number | null
+          salary_min: number | null
+          salary_type: string | null
+          title: string
+          updated_at: string
+          work_mode: string
+        }
+        Insert: {
+          applications_count?: number
+          benefits?: string | null
+          city?: string
+          company_id: string
+          created_at?: string
+          description: string
+          employment_type?: string
+          expires_at?: string | null
+          hide_salary?: boolean | null
+          id?: string
+          is_active?: boolean
+          neighborhood?: string | null
+          requirements?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          salary_type?: string | null
+          title: string
+          updated_at?: string
+          work_mode?: string
+        }
+        Update: {
+          applications_count?: number
+          benefits?: string | null
+          city?: string
+          company_id?: string
+          created_at?: string
+          description?: string
+          employment_type?: string
+          expires_at?: string | null
+          hide_salary?: boolean | null
+          id?: string
+          is_active?: boolean
+          neighborhood?: string | null
+          requirements?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          salary_type?: string | null
+          title?: string
+          updated_at?: string
+          work_mode?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_listings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
