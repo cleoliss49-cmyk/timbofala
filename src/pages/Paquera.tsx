@@ -168,13 +168,13 @@ export default function Paquera() {
   };
 
   const fetchStats = async (myProfileId: string) => {
-    // Count likes received
+    // Count likes received (REAL data)
     const { count: likesReceived } = await supabase
       .from('paquera_likes')
       .select('*', { count: 'exact', head: true })
       .eq('liked_id', myProfileId);
 
-    // Count matches
+    // Count matches (REAL data)
     const { count: matches1 } = await supabase
       .from('paquera_matches')
       .select('*', { count: 'exact', head: true })
@@ -185,10 +185,14 @@ export default function Paquera() {
       .select('*', { count: 'exact', head: true })
       .eq('user2_id', myProfileId);
 
+    // Profile views = likes received (real metric based on actual interactions)
+    // Each like represents at least one view, so we use likes as a proxy for views
+    const actualViews = (likesReceived || 0);
+
     setStats({
       totalLikes: likesReceived || 0,
       totalMatches: (matches1 || 0) + (matches2 || 0),
-      profileViews: Math.floor(Math.random() * 50) + (likesReceived || 0) * 3, // Simulated views
+      profileViews: actualViews,
     });
   };
 
@@ -517,7 +521,7 @@ export default function Paquera() {
                     <Eye className="w-4 h-4" />
                     <span className="font-bold">{stats.profileViews}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Visualizações</p>
+                  <p className="text-xs text-muted-foreground">Interações</p>
                 </div>
                 {accessInfo && accessInfo.status !== 'active' && (
                   <div className="text-center">

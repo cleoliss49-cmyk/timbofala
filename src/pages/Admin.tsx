@@ -12,7 +12,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
-import { AdminPaquera } from '@/components/admin/AdminPaquera';
 import { ContentSearch } from '@/components/admin/ContentSearch';
 import { UserBanDialog } from '@/components/admin/UserBanDialog';
 import { 
@@ -211,7 +210,11 @@ export default function Admin() {
             <TabsTrigger value="users">Usuários</TabsTrigger>
             <TabsTrigger value="reports">Denúncias</TabsTrigger>
             <TabsTrigger value="pinned">Fixados</TabsTrigger>
-            <TabsTrigger value="paquera"><Heart className="w-4 h-4 mr-1" />Paquera</TabsTrigger>
+            <TabsTrigger value="paquera" asChild>
+              <Link to="/admin/paquera" className="flex items-center gap-1">
+                <Heart className="w-4 h-4" />Paquera
+              </Link>
+            </TabsTrigger>
             {adminData?.can_manage_admins && <TabsTrigger value="admins">Admins</TabsTrigger>}
           </TabsList>
 
@@ -320,9 +323,6 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="paquera">
-            <AdminPaquera />
-          </TabsContent>
 
           {adminData?.can_manage_admins && (
             <TabsContent value="admins">
