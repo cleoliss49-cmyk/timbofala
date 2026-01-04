@@ -243,23 +243,42 @@ export default function Marketplace() {
       let imageUrl = editingProduct?.image_url || null;
 
       if (selectedImage) {
-        const fileExt = selectedImage.name.split('.').pop();
+        // Validar tamanho do arquivo (máximo 5MB)
+        if (selectedImage.size > 5 * 1024 * 1024) {
+          throw new Error('A imagem deve ter no máximo 5MB');
+        }
+
+        // Validar tipo de arquivo
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowedTypes.includes(selectedImage.type)) {
+          throw new Error('Formato de imagem não suportado. Use JPG, PNG, WEBP ou GIF');
+        }
+
+        const fileExt = selectedImage.name.split('.').pop()?.toLowerCase() || 'jpg';
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
         
-        const { error: uploadError } = await supabase.storage
+        console.log('Iniciando upload:', { fileName, size: selectedImage.size, type: selectedImage.type });
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('products')
-          .upload(fileName, selectedImage);
+          .upload(fileName, selectedImage, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
         if (uploadError) {
           console.error('Erro no upload:', uploadError);
           throw new Error('Erro ao enviar imagem: ' + uploadError.message);
         }
+        
+        console.log('Upload concluído:', uploadData);
 
         const { data: { publicUrl } } = supabase.storage
           .from('products')
           .getPublicUrl(fileName);
 
         imageUrl = publicUrl;
+        console.log('URL pública:', imageUrl);
       }
 
       if (editingProduct) {
