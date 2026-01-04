@@ -1523,6 +1523,66 @@ export type Database = {
           },
         ]
       }
+      paquera_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          paquera_profile_id: string
+          pix_identifier: string
+          receipt_url: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          subscription_id: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          paquera_profile_id: string
+          pix_identifier: string
+          receipt_url: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subscription_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          paquera_profile_id?: string
+          pix_identifier?: string
+          receipt_url?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          subscription_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paquera_payments_paquera_profile_id_fkey"
+            columns: ["paquera_profile_id"]
+            isOneToOne: false
+            referencedRelation: "paquera_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paquera_payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "paquera_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paquera_profiles: {
         Row: {
           accepted_terms: boolean | null
@@ -1579,6 +1639,65 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      paquera_subscriptions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          interactions_count: number
+          interactions_limit: number
+          notes: string | null
+          paquera_profile_id: string
+          receipt_uploaded_at: string | null
+          receipt_url: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          interactions_count?: number
+          interactions_limit?: number
+          notes?: string | null
+          paquera_profile_id: string
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          interactions_count?: number
+          interactions_limit?: number
+          notes?: string | null
+          paquera_profile_id?: string
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paquera_subscriptions_paquera_profile_id_fkey"
+            columns: ["paquera_profile_id"]
+            isOneToOne: true
+            referencedRelation: "paquera_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pinned_post_impressions: {
         Row: {
@@ -2532,6 +2651,19 @@ export type Database = {
       }
     }
     Functions: {
+      approve_paquera_payment: {
+        Args: { p_days?: number; p_payment_id: string }
+        Returns: boolean
+      }
+      check_paquera_access: {
+        Args: { p_profile_id: string }
+        Returns: {
+          can_interact: boolean
+          interactions_remaining: number
+          needs_payment: boolean
+          subscription_status: string
+        }[]
+      }
       cleanup_expired_stories: { Args: never; Returns: undefined }
       get_business_commission_balance: {
         Args: { p_business_id: string }
@@ -2550,6 +2682,14 @@ export type Database = {
         }[]
       }
       has_business_profile: { Args: { _user_id: string }; Returns: boolean }
+      increment_paquera_interaction: {
+        Args: { p_profile_id: string }
+        Returns: {
+          can_continue: boolean
+          current_count: number
+          limit_reached: boolean
+        }[]
+      }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }
@@ -2561,6 +2701,10 @@ export type Database = {
           p_receipt_url?: string
         }
         Returns: string
+      }
+      reject_paquera_payment: {
+        Args: { p_payment_id: string; p_reason?: string }
+        Returns: boolean
       }
       submit_pix_receipt: {
         Args: { _order_id: string; _receipt_url: string }
