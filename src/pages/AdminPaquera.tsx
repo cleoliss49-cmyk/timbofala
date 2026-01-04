@@ -12,13 +12,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -42,17 +35,22 @@ import {
   Clock,
   CreditCard,
   Eye,
-  Calendar,
   RefreshCw,
   CheckCircle,
   XCircle,
   Image as ImageIcon,
   ArrowLeft,
-  Shield,
   Copy,
   ExternalLink,
+  Unlock,
+  Crown,
+  Pause,
+  Gift,
+  FileText,
+  Calendar,
+  DollarSign,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInDays, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface PaqueraProfile {
@@ -78,6 +76,8 @@ interface PaqueraProfile {
     interactions_count: number;
     interactions_limit: number;
     expires_at: string | null;
+    approved_at: string | null;
+    created_at: string;
   };
 }
 
@@ -110,6 +110,8 @@ interface Stats {
   pendingPayments: number;
   totalMatches: number;
   activeSubscriptions: number;
+  freePhase: number;
+  pausedUsers: number;
 }
 
 export default function AdminPaquera() {
@@ -129,9 +131,9 @@ export default function AdminPaquera() {
     pendingPayments: 0,
     totalMatches: 0,
     activeSubscriptions: 0,
+    freePhase: 0,
+    pausedUsers: 0,
   });
-  const [genderFilter, setGenderFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPayment, setSelectedPayment] = useState<PaqueraPayment | null>(null);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
@@ -139,6 +141,9 @@ export default function AdminPaquera() {
   const [processing, setProcessing] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<PaqueraProfile | null>(null);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [reportProfile, setReportProfile] = useState<PaqueraProfile | null>(null);
+  const [userPaymentHistory, setUserPaymentHistory] = useState<PaqueraPayment[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -249,6 +254,7 @@ export default function AdminPaquera() {
 
   const fetchStats = async () => {
     const { data: allProfiles } = await supabase.from('paquera_profiles').select('id, gender, is_active');
+    const { data: subscriptions } = await supabase.from('paquera_subscriptions').select('*');
 
     const { count: pendingPayments } = await supabase
       .from('paquera_payments')
@@ -259,10 +265,21 @@ export default function AdminPaquera() {
       .from('paquera_matches')
       .select('*', { count: 'exact', head: true });
 
-    const { count: activeSubscriptions } = await supabase
-      .from('paquera_subscriptions')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active');
+    const now = new Date();
+    const activeSubscriptions = subscriptions?.filter(
+      (s) => s.status === 'active' && s.expires_at && new Date(s.expires_at) > now
+    ).length || 0;
+
+    const freePhase = allProfiles?.filter((p) => {
+      const sub = subscriptions?.find((s) => s.paquera_profile_id === p.id);
+      return !sub || (sub.interactions_count < sub.interactions_limit && sub.status !== 'active');
+    }).length || 0;
+
+    const pausedUsers = subscriptions?.filter((s) => {
+      const isExpired = s.expires_at && new Date(s.expires_at) < now;
+      const reachedLimit = s.interactions_count >= s.interactions_limit && s.status !== 'active';
+      return isExpired || reachedLimit;
+    }).length || 0;
 
     if (allProfiles) {
       setStats({
@@ -273,9 +290,21 @@ export default function AdminPaquera() {
         otherProfiles: allProfiles.filter((p) => p.gender === 'other').length,
         pendingPayments: pendingPayments || 0,
         totalMatches: totalMatches || 0,
-        activeSubscriptions: activeSubscriptions || 0,
+        activeSubscriptions,
+        freePhase,
+        pausedUsers,
       });
     }
+  };
+
+  const fetchUserPaymentHistory = async (paqueraProfileId: string) => {
+    const { data } = await supabase
+      .from('paquera_payments')
+      .select('*')
+      .eq('paquera_profile_id', paqueraProfileId)
+      .order('created_at', { ascending: true });
+    
+    setUserPaymentHistory(data || []);
   };
 
   const handleApprovePayment = async (paymentId: string) => {
@@ -344,28 +373,83 @@ export default function AdminPaquera() {
     setProcessing(false);
   };
 
+  const handleManualRelease = async (profile: PaqueraProfile) => {
+    setProcessing(true);
+    try {
+      const expiresAt = addDays(new Date(), 30);
+      
+      const { error } = await supabase
+        .from('paquera_subscriptions')
+        .upsert({
+          id: profile.subscription?.id,
+          paquera_profile_id: profile.id,
+          user_id: profile.user_id,
+          status: 'active',
+          expires_at: expiresAt.toISOString(),
+          approved_at: new Date().toISOString(),
+          approved_by: user!.id,
+          interactions_count: 0,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'paquera_profile_id' });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Usuário liberado!',
+        description: `Acesso liberado até ${format(expiresAt, 'dd/MM/yyyy', { locale: ptBR })}`,
+      });
+
+      fetchData();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao liberar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+    setProcessing(false);
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: 'ID copiado!', description: text });
   };
 
-  const filteredProfiles = profiles.filter((p) => {
-    const matchesGender = genderFilter === 'all' || p.gender === genderFilter;
-    const matchesStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'active' && p.subscription?.status === 'active') ||
-      (statusFilter === 'pending' && (!p.subscription || p.subscription.status === 'pending')) ||
-      (statusFilter === 'expired' && p.subscription?.status === 'expired');
-    const matchesSearch =
-      !searchTerm ||
-      p.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.profiles?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.id.toLowerCase().includes(searchTerm.toLowerCase());
+  const openUserReport = async (profile: PaqueraProfile) => {
+    setReportProfile(profile);
+    await fetchUserPaymentHistory(profile.id);
+    setShowReportDialog(true);
+  };
 
-    return matchesGender && matchesStatus && matchesSearch;
+  // Filter profiles by category
+  const freePhaseProfiles = profiles.filter((p) => {
+    const sub = p.subscription;
+    return !sub || (sub.interactions_count < sub.interactions_limit && sub.status !== 'active');
+  });
+
+  const premiumProfiles = profiles.filter((p) => {
+    const sub = p.subscription;
+    return sub?.status === 'active' && sub.expires_at && new Date(sub.expires_at) > new Date();
+  });
+
+  const pausedProfiles = profiles.filter((p) => {
+    const sub = p.subscription;
+    if (!sub) return false;
+    const isExpired = sub.expires_at && new Date(sub.expires_at) < new Date();
+    const reachedLimit = sub.interactions_count >= sub.interactions_limit && sub.status !== 'active';
+    return isExpired || reachedLimit;
   });
 
   const pendingPaymentsList = payments.filter((p) => p.status === 'pending');
+
+  const filterBySearch = (profileList: PaqueraProfile[]) => {
+    if (!searchTerm) return profileList;
+    return profileList.filter((p) =>
+      p.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.profiles?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
 
   const getGenderLabel = (gender: string) => {
     switch (gender) {
@@ -377,14 +461,143 @@ export default function AdminPaquera() {
 
   const getStatusBadge = (subscription?: PaqueraProfile['subscription']) => {
     if (!subscription) return <Badge variant="outline">Novo</Badge>;
-    switch (subscription.status) {
-      case 'active': return <Badge className="bg-green-500">Ativo</Badge>;
-      case 'pending': return <Badge variant="secondary">Pendente</Badge>;
-      case 'expired': return <Badge variant="destructive">Expirado</Badge>;
-      case 'blocked': return <Badge variant="destructive">Bloqueado</Badge>;
-      default: return <Badge variant="outline">{subscription.status}</Badge>;
+    
+    const now = new Date();
+    const isExpired = subscription.expires_at && new Date(subscription.expires_at) < now;
+    
+    if (subscription.status === 'active' && !isExpired) {
+      return <Badge className="bg-green-500">Premium</Badge>;
     }
+    if (isExpired) {
+      return <Badge variant="destructive">Expirado</Badge>;
+    }
+    if (subscription.interactions_count >= subscription.interactions_limit) {
+      return <Badge variant="secondary">Limite Atingido</Badge>;
+    }
+    return <Badge variant="outline">Fase Livre</Badge>;
   };
+
+  const getDaysRemaining = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    const days = differenceInDays(new Date(expiresAt), new Date());
+    return days > 0 ? days : 0;
+  };
+
+  const renderProfileTable = (profileList: PaqueraProfile[], showReleaseButton = false) => (
+    <ScrollArea className="h-[500px]">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead>Foto</TableHead>
+            <TableHead>Usuário</TableHead>
+            <TableHead>Interações</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Liberação</TableHead>
+            <TableHead>Renovação</TableHead>
+            <TableHead>Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {profileList.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                Nenhum perfil encontrado
+              </TableCell>
+            </TableRow>
+          ) : (
+            profileList.map((profile) => (
+              <TableRow key={profile.id}>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <span className="font-mono text-xs">{profile.id.slice(0, 8)}...</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => copyToClipboard(profile.id)}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={profile.photo_url} />
+                    <AvatarFallback>
+                      {profile.profiles?.full_name?.charAt(0) || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                </TableCell>
+                <TableCell>
+                  <div>
+                    <p className="font-medium">{profile.profiles?.full_name}</p>
+                    <p className="text-sm text-muted-foreground">@{profile.profiles?.username}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className="font-mono">
+                    {profile.subscription?.interactions_count || 0}/
+                    {profile.subscription?.interactions_limit || 10}
+                  </span>
+                </TableCell>
+                <TableCell>{getStatusBadge(profile.subscription)}</TableCell>
+                <TableCell>
+                  {profile.subscription?.approved_at
+                    ? format(new Date(profile.subscription.approved_at), 'dd/MM/yyyy', { locale: ptBR })
+                    : '-'}
+                </TableCell>
+                <TableCell>
+                  {profile.subscription?.expires_at ? (
+                    <div>
+                      <span>{format(new Date(profile.subscription.expires_at), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                      {getDaysRemaining(profile.subscription.expires_at) !== null && (
+                        <p className="text-xs text-muted-foreground">
+                          ({getDaysRemaining(profile.subscription.expires_at)} dias)
+                        </p>
+                      )}
+                    </div>
+                  ) : '-'}
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedProfile(profile);
+                        setShowProfileDialog(true);
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openUserReport(profile)}
+                    >
+                      <FileText className="w-4 h-4" />
+                    </Button>
+                    {showReleaseButton && (
+                      <Button
+                        size="sm"
+                        className="bg-green-500 hover:bg-green-600"
+                        onClick={() => handleManualRelease(profile)}
+                        disabled={processing}
+                      >
+                        <Unlock className="w-4 h-4 mr-1" />
+                        Liberar
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </ScrollArea>
+  );
 
   if (authLoading || loading) {
     return (
@@ -425,7 +638,7 @@ export default function AdminPaquera() {
 
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-5">
           <Card className="bg-gradient-to-br from-pink-500/10 to-rose-500/10 border-pink-200 dark:border-pink-800">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -434,21 +647,7 @@ export default function AdminPaquera() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.totalProfiles}</p>
-                  <p className="text-sm text-muted-foreground">Perfis Cadastrados</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-200 dark:border-blue-800">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-500/20 rounded-xl">
-                  <Users className="w-6 h-6 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.totalMatches}</p>
-                  <p className="text-sm text-muted-foreground">Matches Totais</p>
+                  <p className="text-sm text-muted-foreground">Total Perfis</p>
                 </div>
               </div>
             </CardContent>
@@ -458,11 +657,25 @@ export default function AdminPaquera() {
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-green-500/20 rounded-xl">
-                  <CheckCircle className="w-6 h-6 text-green-500" />
+                  <Crown className="w-6 h-6 text-green-500" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.activeSubscriptions}</p>
-                  <p className="text-sm text-muted-foreground">Assinaturas Ativas</p>
+                  <p className="text-sm text-muted-foreground">Premium</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-200 dark:border-blue-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-500/20 rounded-xl">
+                  <Gift className="w-6 h-6 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.freePhase}</p>
+                  <p className="text-sm text-muted-foreground">Fase Livre</p>
                 </div>
               </div>
             </CardContent>
@@ -472,186 +685,80 @@ export default function AdminPaquera() {
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-orange-500/20 rounded-xl">
-                  <CreditCard className="w-6 h-6 text-orange-500" />
+                  <Pause className="w-6 h-6 text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.pausedUsers}</p>
+                  <p className="text-sm text-muted-foreground">Pausados</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-red-500/10 to-rose-500/10 border-red-200 dark:border-red-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-red-500/20 rounded-xl">
+                  <CreditCard className="w-6 h-6 text-red-500" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.pendingPayments}</p>
-                  <p className="text-sm text-muted-foreground">Pagamentos Pendentes</p>
+                  <p className="text-sm text-muted-foreground">Pendentes</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Gender Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Distribuição por Gênero</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-6 flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-blue-500" />
-                <span className="font-medium">Masculino: {stats.maleProfiles}</span>
-                <span className="text-muted-foreground">({stats.totalProfiles > 0 ? Math.round((stats.maleProfiles / stats.totalProfiles) * 100) : 0}%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-pink-500" />
-                <span className="font-medium">Feminino: {stats.femaleProfiles}</span>
-                <span className="text-muted-foreground">({stats.totalProfiles > 0 ? Math.round((stats.femaleProfiles / stats.totalProfiles) * 100) : 0}%)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-purple-500" />
-                <span className="font-medium">Outro: {stats.otherProfiles}</span>
-                <span className="text-muted-foreground">({stats.totalProfiles > 0 ? Math.round((stats.otherProfiles / stats.totalProfiles) * 100) : 0}%)</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Search Bar */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, username ou ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
 
         <Tabs defaultValue="profiles">
-          <TabsList className="mb-4">
-            <TabsTrigger value="profiles">
-              <Users className="w-4 h-4 mr-2" />
+          <TabsList className="mb-4 flex-wrap h-auto gap-1">
+            <TabsTrigger value="profiles" className="gap-2">
+              <Users className="w-4 h-4" />
               Perfis ({profiles.length})
             </TabsTrigger>
-            <TabsTrigger value="payments" className="relative">
-              <CreditCard className="w-4 h-4 mr-2" />
+            <TabsTrigger value="payments" className="gap-2">
+              <CreditCard className="w-4 h-4" />
               Pagamentos
               {pendingPaymentsList.length > 0 && (
-                <Badge className="ml-2 bg-red-500">{pendingPaymentsList.length}</Badge>
+                <Badge className="ml-1 bg-red-500">{pendingPaymentsList.length}</Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="validation" className="gap-2">
+              <CheckCircle className="w-4 h-4" />
+              Validação Manual
+            </TabsTrigger>
+            <TabsTrigger value="free" className="gap-2">
+              <Gift className="w-4 h-4" />
+              Fase Livre ({freePhaseProfiles.length})
+            </TabsTrigger>
+            <TabsTrigger value="premium" className="gap-2">
+              <Crown className="w-4 h-4" />
+              Premium ({premiumProfiles.length})
+            </TabsTrigger>
+            <TabsTrigger value="paused" className="gap-2">
+              <Pause className="w-4 h-4" />
+              Pausados ({pausedProfiles.length})
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profiles">
             <Card>
               <CardHeader>
-                <div className="flex flex-col sm:flex-row gap-4 justify-between">
-                  <CardTitle>Perfis Paquera</CardTitle>
-                  <div className="flex gap-2 flex-wrap">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar por nome ou ID..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 w-[200px]"
-                      />
-                    </div>
-                    <Select value={genderFilter} onValueChange={setGenderFilter}>
-                      <SelectTrigger className="w-[130px]">
-                        <SelectValue placeholder="Gênero" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="male">Masculino</SelectItem>
-                        <SelectItem value="female">Feminino</SelectItem>
-                        <SelectItem value="other">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[130px]">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="active">Ativo</SelectItem>
-                        <SelectItem value="pending">Pendente</SelectItem>
-                        <SelectItem value="expired">Expirado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                <CardTitle>Todos os Perfis Paquera</CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[600px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Foto</TableHead>
-                        <TableHead>Usuário</TableHead>
-                        <TableHead>Gênero</TableHead>
-                        <TableHead>Procura</TableHead>
-                        <TableHead>Cidade</TableHead>
-                        <TableHead>Interações</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Expira em</TableHead>
-                        <TableHead>Cadastro</TableHead>
-                        <TableHead>Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredProfiles.map((profile) => (
-                        <TableRow key={profile.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <span className="font-mono text-xs">{profile.id.slice(0, 8)}...</span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => copyToClipboard(profile.id)}
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Avatar className="w-10 h-10">
-                              <AvatarImage src={profile.photo_url} />
-                              <AvatarFallback>
-                                {profile.profiles?.full_name?.charAt(0) || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{profile.profiles?.full_name}</p>
-                              <p className="text-sm text-muted-foreground">@{profile.profiles?.username}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{getGenderLabel(profile.gender)}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">{getGenderLabel(profile.looking_for_gender)}</Badge>
-                          </TableCell>
-                          <TableCell>{profile.city}</TableCell>
-                          <TableCell>
-                            <span className="font-mono">
-                              {profile.subscription?.interactions_count || 0}/
-                              {profile.subscription?.interactions_limit || 10}
-                            </span>
-                          </TableCell>
-                          <TableCell>{getStatusBadge(profile.subscription)}</TableCell>
-                          <TableCell>
-                            {profile.subscription?.expires_at
-                              ? format(new Date(profile.subscription.expires_at), 'dd/MM/yyyy', { locale: ptBR })
-                              : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {format(new Date(profile.created_at), 'dd/MM/yyyy', { locale: ptBR })}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedProfile(profile);
-                                setShowProfileDialog(true);
-                              }}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              Ver
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
+                {renderProfileTable(filterBySearch(profiles))}
               </CardContent>
             </Card>
           </TabsContent>
@@ -673,7 +780,6 @@ export default function AdminPaquera() {
                         <TableHead>Usuário</TableHead>
                         <TableHead>Valor</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Comprovante</TableHead>
                         <TableHead>Data</TableHead>
                         <TableHead>Ações</TableHead>
                       </TableRow>
@@ -681,7 +787,7 @@ export default function AdminPaquera() {
                     <TableBody>
                       {payments.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                             Nenhum pagamento encontrado
                           </TableCell>
                         </TableRow>
@@ -727,36 +833,32 @@ export default function AdminPaquera() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedPayment(payment);
-                                  setShowReceiptDialog(true);
-                                }}
-                              >
-                                <Eye className="w-4 h-4 mr-1" />
-                                Ver
-                              </Button>
-                            </TableCell>
-                            <TableCell>
                               {format(new Date(payment.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                             </TableCell>
                             <TableCell>
-                              {payment.status === 'pending' && (
-                                <div className="flex gap-1">
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedPayment(payment);
+                                    setShowReceiptDialog(true);
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Ver
+                                </Button>
+                                {payment.status === 'pending' && (
                                   <Button
                                     size="sm"
                                     className="bg-green-500 hover:bg-green-600"
-                                    onClick={() => {
-                                      setSelectedPayment(payment);
-                                      setShowReceiptDialog(true);
-                                    }}
+                                    onClick={() => handleApprovePayment(payment.id)}
+                                    disabled={processing}
                                   >
                                     <Check className="w-4 h-4" />
                                   </Button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -764,6 +866,62 @@ export default function AdminPaquera() {
                     </TableBody>
                   </Table>
                 </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="validation">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Unlock className="w-5 h-5" />
+                  Validação Manual - Liberar Usuários
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {renderProfileTable(filterBySearch(profiles), true)}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="free">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Gift className="w-5 h-5" />
+                  Fase Livre - Ainda não fizeram 10 pares
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {renderProfileTable(filterBySearch(freePhaseProfiles))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="premium">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Crown className="w-5 h-5" />
+                  Premium - Usuários que pagaram
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {renderProfileTable(filterBySearch(premiumProfiles))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="paused">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Pause className="w-5 h-5" />
+                  Pausados - Limite atingido ou expirados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {renderProfileTable(filterBySearch(pausedProfiles), true)}
               </CardContent>
             </Card>
           </TabsContent>
@@ -820,10 +978,6 @@ export default function AdminPaquera() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Procurando:</span>
                   <span>{getGenderLabel(selectedProfile.looking_for_gender)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Orientação:</span>
-                  <span className="capitalize">{selectedProfile.sexual_orientation}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Cidade:</span>
@@ -965,6 +1119,219 @@ export default function AdminPaquera() {
                   </p>
                 </div>
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* User Report Dialog */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Relatório Completo do Usuário
+            </DialogTitle>
+          </DialogHeader>
+
+          {reportProfile && (
+            <div className="space-y-6">
+              {/* User Info Header */}
+              <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src={reportProfile.photo_url} />
+                  <AvatarFallback className="text-xl">
+                    {reportProfile.profiles?.full_name?.charAt(0) || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-bold text-lg">{reportProfile.profiles?.full_name}</h3>
+                  <p className="text-muted-foreground">@{reportProfile.profiles?.username}</p>
+                  {getStatusBadge(reportProfile.subscription)}
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="space-y-4">
+                <h4 className="font-bold flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Linha do Tempo
+                </h4>
+                
+                <div className="space-y-3">
+                  {/* Account Created */}
+                  <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Cadastro no Paquera</p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(reportProfile.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Free Phase End (if reached limit) */}
+                  {reportProfile.subscription && reportProfile.subscription.interactions_count >= 10 && (
+                    <div className="flex items-start gap-3 p-3 bg-orange-500/10 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+                        <Gift className="w-5 h-5 text-orange-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Fase Livre Encerrada</p>
+                        <p className="text-sm text-muted-foreground">
+                          Atingiu o limite de 10 interações gratuitas
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* First Subscription */}
+                  {reportProfile.subscription?.approved_at && (
+                    <div className="flex items-start gap-3 p-3 bg-green-500/10 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <Crown className="w-5 h-5 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Primeira Adesão Premium (+30 dias)</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(reportProfile.subscription.approved_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Expiration */}
+                  {reportProfile.subscription?.expires_at && (
+                    <div className={`flex items-start gap-3 p-3 rounded-lg ${
+                      new Date(reportProfile.subscription.expires_at) > new Date() 
+                        ? 'bg-green-500/10' 
+                        : 'bg-red-500/10'
+                    }`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        new Date(reportProfile.subscription.expires_at) > new Date()
+                          ? 'bg-green-500/20'
+                          : 'bg-red-500/20'
+                      }`}>
+                        <Clock className={`w-5 h-5 ${
+                          new Date(reportProfile.subscription.expires_at) > new Date()
+                            ? 'text-green-500'
+                            : 'text-red-500'
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="font-medium">
+                          {new Date(reportProfile.subscription.expires_at) > new Date()
+                            ? 'Data de Renovação'
+                            : 'Assinatura Expirada'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(reportProfile.subscription.expires_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment History */}
+              <div className="space-y-4">
+                <h4 className="font-bold flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  Histórico de Pagamentos ({userPaymentHistory.length})
+                </h4>
+                
+                {userPaymentHistory.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    Nenhum pagamento registrado
+                  </p>
+                ) : (
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-3">
+                      {userPaymentHistory.map((payment, index) => (
+                        <div key={payment.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            payment.status === 'approved' ? 'bg-green-500/20' :
+                            payment.status === 'rejected' ? 'bg-red-500/20' :
+                            'bg-yellow-500/20'
+                          }`}>
+                            {payment.status === 'approved' ? (
+                              <CheckCircle className="w-5 h-5 text-green-500" />
+                            ) : payment.status === 'rejected' ? (
+                              <XCircle className="w-5 h-5 text-red-500" />
+                            ) : (
+                              <Clock className="w-5 h-5 text-yellow-500" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium">
+                                  {index === 0 ? 'Primeiro Pagamento' : `Renovação #${index}`}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  PIX: {payment.pix_identifier}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-green-600">
+                                  R$ {payment.amount.toFixed(2).replace('.', ',')}
+                                </p>
+                                <Badge variant={
+                                  payment.status === 'approved' ? 'default' :
+                                  payment.status === 'rejected' ? 'destructive' :
+                                  'secondary'
+                                }>
+                                  {payment.status === 'approved' ? 'Aprovado' :
+                                   payment.status === 'rejected' ? 'Rejeitado' :
+                                   'Pendente'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {format(new Date(payment.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                            {payment.rejection_reason && (
+                              <p className="text-xs text-red-500 mt-1">
+                                Motivo: {payment.rejection_reason}
+                              </p>
+                            )}
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="p-0 h-auto text-xs"
+                              onClick={() => window.open(payment.receipt_url, '_blank')}
+                            >
+                              Ver Comprovante
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-muted rounded-lg text-center">
+                  <p className="text-2xl font-bold text-green-600">
+                    R$ {userPaymentHistory
+                      .filter(p => p.status === 'approved')
+                      .reduce((sum, p) => sum + p.amount, 0)
+                      .toFixed(2)
+                      .replace('.', ',')}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Total Pago</p>
+                </div>
+                <div className="p-4 bg-muted rounded-lg text-center">
+                  <p className="text-2xl font-bold">
+                    {userPaymentHistory.filter(p => p.status === 'approved').length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Pagamentos Aprovados</p>
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>
