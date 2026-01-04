@@ -245,37 +245,7 @@ export default function ConhecerEmpresas() {
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-24 px-4 relative z-10">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-sm mb-6">
-              <Target className="w-4 h-4 text-primary" />
-              <span className="text-primary font-medium">Setores</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold mb-4">
-              Todos os segmentos
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Sua empresa se encaixa em qualquer categoria
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {COMPANY_CATEGORIES.map((category) => (
-              <div
-                key={category.value}
-                className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-card/50 border border-border/50 backdrop-blur-sm hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 cursor-default"
-              >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-2xl">
-                  {category.icon}
-                </div>
-                <span className="text-sm font-medium text-center">{category.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* How it Works */}
 
       {/* How it Works */}
       <section className="py-24 px-4 relative z-10">
@@ -351,10 +321,6 @@ export default function ConhecerEmpresas() {
                   <p className="text-muted-foreground">
                     Sem mensalidades, sem comissões, sem surpresas.
                   </p>
-                  <div className="mt-6 flex items-center justify-center gap-2 text-primary">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span className="font-medium">Para sempre</span>
-                  </div>
                 </div>
               </div>
             </div>

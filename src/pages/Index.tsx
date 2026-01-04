@@ -68,6 +68,11 @@ export default function Index() {
                 Conhecer
               </Button>
             </Link>
+            <Link to="/conhecer-empresas">
+              <Button variant="ghost" size="sm" className="text-primary">
+                Para Empresas
+              </Button>
+            </Link>
             <Link to="/auth">
               <Button size="sm" className="shadow-lg shadow-primary/25">
                 Entrar
@@ -106,18 +111,18 @@ export default function Index() {
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Link to="/conhecer">
-              <Button size="lg" variant="outline" className="h-14 px-10 text-lg">
-                Saiba mais
+            <Link to="/conhecer-empresas">
+              <Button size="lg" variant="outline" className="h-14 px-10 text-lg border-primary/50 text-primary hover:bg-primary/10 group">
+                🏢 Para Empresas
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           </div>
 
-          <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 justify-center">
-            <Link to="/conhecer-empresas">
-              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-primary">
-                🏢 Cadastrar Empresa Grátis
-                <ArrowRight className="w-4 h-4" />
+          <div className="mt-6">
+            <Link to="/conhecer">
+              <Button variant="link" className="text-muted-foreground hover:text-primary">
+                Saiba mais sobre a plataforma
               </Button>
             </Link>
           </div>
