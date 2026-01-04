@@ -12,11 +12,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
+import { AdminPaquera } from '@/components/admin/AdminPaquera';
 import { ContentSearch } from '@/components/admin/ContentSearch';
 import { UserBanDialog } from '@/components/admin/UserBanDialog';
 import { 
   Shield, Users, FileText, Flag, Pin, LogOut, Search, Trash2, Eye, UserX, 
-  TrendingUp, Calendar, Clock, Plus, X, Ban, BarChart3, AlertTriangle, DollarSign
+  TrendingUp, Calendar, Clock, Plus, X, Ban, BarChart3, AlertTriangle, DollarSign, Heart
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -204,12 +205,13 @@ export default function Admin() {
         <ContentSearch canDeletePosts={adminData?.can_delete_posts || false} canDeleteUsers={adminData?.can_delete_users || false} onAction={loadAllData} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="analytics"><BarChart3 className="w-4 h-4 mr-1" />Analytics</TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
             <TabsTrigger value="reports">Denúncias</TabsTrigger>
             <TabsTrigger value="pinned">Fixados</TabsTrigger>
+            <TabsTrigger value="paquera"><Heart className="w-4 h-4 mr-1" />Paquera</TabsTrigger>
             {adminData?.can_manage_admins && <TabsTrigger value="admins">Admins</TabsTrigger>}
           </TabsList>
 
@@ -316,6 +318,10 @@ export default function Admin() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="paquera">
+            <AdminPaquera />
           </TabsContent>
 
           {adminData?.can_manage_admins && (

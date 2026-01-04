@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { PaqueraSetupDialog } from '@/components/paquera/PaqueraSetupDialog';
 import { PaqueraMatchesDialog } from '@/components/paquera/PaqueraMatchesDialog';
+import { PaqueraPaymentDialog } from '@/components/paquera/PaqueraPaymentDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DropdownMenu,
@@ -72,6 +73,13 @@ export default function Paquera() {
   const [filterMode, setFilterMode] = useState<'all' | 'nearby' | 'new'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [superLikeAvailable, setSuperLikeAvailable] = useState(true);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [accessInfo, setAccessInfo] = useState<{
+    canInteract: boolean;
+    interactionsRemaining: number;
+    needsPayment: boolean;
+    status: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -95,12 +103,33 @@ export default function Paquera() {
       await Promise.all([
         fetchProfiles(data),
         fetchMyLikes(data.id),
-        fetchStats(data.id)
+        fetchStats(data.id),
+        checkAccessStatus(data.id)
       ]);
     } else {
       setShowSetup(true);
     }
     setLoading(false);
+  };
+
+  const checkAccessStatus = async (profileId: string) => {
+    const { data, error } = await supabase.rpc('check_paquera_access', {
+      p_profile_id: profileId
+    });
+
+    if (data && data.length > 0) {
+      const result = data[0];
+      setAccessInfo({
+        canInteract: result.can_interact,
+        interactionsRemaining: result.interactions_remaining,
+        needsPayment: result.needs_payment,
+        status: result.subscription_status
+      });
+      
+      if (result.needs_payment) {
+        setShowPaymentDialog(true);
+      }
+    }
   };
 
   const fetchStats = async (myProfileId: string) => {
@@ -251,6 +280,12 @@ export default function Paquera() {
   const handleLike = async (isSuperLike = false) => {
     if (!myPaqueraProfile || currentIndex >= profiles.length) return;
 
+    // Check if user needs to pay
+    if (accessInfo?.needsPayment) {
+      setShowPaymentDialog(true);
+      return;
+    }
+
     const targetProfile = profiles[currentIndex];
     setSwipeDirection('right');
 
@@ -260,6 +295,29 @@ export default function Paquera() {
         title: '⭐ Super Like enviado!',
         description: `${targetProfile.user_profile?.full_name} vai ver que você curtiu especialmente!`,
       });
+    }
+
+    // Increment interaction count
+    const { data: interactionResult } = await supabase.rpc('increment_paquera_interaction', {
+      p_profile_id: myPaqueraProfile.id
+    });
+
+    if (interactionResult && interactionResult.length > 0) {
+      const result = interactionResult[0];
+      if (result.limit_reached) {
+        setAccessInfo(prev => prev ? { ...prev, needsPayment: true, canInteract: false } : null);
+        setShowPaymentDialog(true);
+        setSwipeDirection(null);
+        return;
+      }
+      
+      // Update remaining interactions
+      if (accessInfo) {
+        setAccessInfo(prev => prev ? {
+          ...prev,
+          interactionsRemaining: Math.max(0, (prev.interactionsRemaining || 10) - 1)
+        } : null);
+      }
     }
 
     try {
@@ -426,6 +484,17 @@ export default function Paquera() {
                   </div>
                   <p className="text-xs text-muted-foreground">Visualizações</p>
                 </div>
+                {accessInfo && accessInfo.status !== 'active' && (
+                  <div className="text-center">
+                    <div className={`flex items-center justify-center gap-1 ${
+                      accessInfo.interactionsRemaining <= 3 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      <Zap className="w-4 h-4" />
+                      <span className="font-bold">{accessInfo.interactionsRemaining}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Restantes</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -654,6 +723,17 @@ export default function Paquera() {
         onOpenChange={setShowMatches}
         myProfileId={myPaqueraProfile?.id}
       />
+
+      {myPaqueraProfile && user && (
+        <PaqueraPaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          paqueraProfileId={myPaqueraProfile.id}
+          userId={user.id}
+          interactionsUsed={10 - (accessInfo?.interactionsRemaining || 0)}
+          interactionsLimit={10}
+        />
+      )}
     </MainLayout>
   );
 }
