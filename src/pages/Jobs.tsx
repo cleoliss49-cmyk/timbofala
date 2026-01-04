@@ -92,8 +92,8 @@ export default function Jobs() {
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.companies.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = !employmentType || job.employment_type === employmentType;
-    const matchesMode = !workMode || job.work_mode === workMode;
+    const matchesType = !employmentType || employmentType === 'all' || job.employment_type === employmentType;
+    const matchesMode = !workMode || workMode === 'all' || job.work_mode === workMode;
     return matchesSearch && matchesType && matchesMode;
   });
 
@@ -134,7 +134,7 @@ export default function Jobs() {
               <SelectValue placeholder="Tipo de vaga" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {EMPLOYMENT_TYPES.map((type) => (
                 <SelectItem key={type.value} value={type.value}>
                   {type.label}
@@ -148,7 +148,7 @@ export default function Jobs() {
               <SelectValue placeholder="Modalidade" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               {WORK_MODES.map((mode) => (
                 <SelectItem key={mode.value} value={mode.value}>
                   {mode.label}

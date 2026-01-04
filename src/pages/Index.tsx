@@ -113,6 +113,15 @@ export default function Index() {
             </Link>
           </div>
 
+          <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 justify-center">
+            <Link to="/conhecer-empresas">
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-primary">
+                🏢 Cadastrar Empresa Grátis
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+
           <p className="mt-12 text-sm text-muted-foreground">
             100% gratuito • Feito para nossa comunidade
           </p>
