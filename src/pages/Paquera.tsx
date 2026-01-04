@@ -208,6 +208,8 @@ export default function Paquera() {
   };
 
   const fetchProfiles = async (myProfile: PaqueraProfile) => {
+    console.log('Fetching profiles for:', myProfile.id, 'user:', user?.id);
+    
     // Fetch ALL active profiles except the current user
     let query = supabase
       .from('paquera_profiles')
@@ -223,85 +225,89 @@ export default function Paquera() {
     
     const { data, error } = await query;
 
+    console.log('Paquera profiles fetched:', data?.length, 'error:', error);
+
     if (error) {
       console.error('Error fetching profiles:', error);
+      toast({
+        title: 'Erro ao carregar perfis',
+        description: 'Não foi possível carregar os perfis. Tente novamente.',
+        variant: 'destructive',
+      });
       return;
     }
 
-    if (data && data.length > 0) {
-      // Filter compatible profiles based on mutual preferences
-      const compatibleProfiles = data.filter(p => {
-        // Check if I'm interested in their gender (or I'm open to all)
+    if (!data || data.length === 0) {
+      console.log('No other profiles found in database');
+      setProfiles([]);
+      return;
+    }
+
+    // Get user profiles info
+    const userIds = data.map(p => p.user_id);
+    
+    const { data: userProfiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, username, birth_date, avatar_url')
+      .in('id', userIds);
+
+    const { data: myLikes } = await supabase
+      .from('paquera_likes')
+      .select('liked_id')
+      .eq('liker_id', myProfile.id);
+
+    const likedSet = new Set(myLikes?.map(l => l.liked_id) || []);
+
+    // Enrich all profiles without mutual preference filtering (show all profiles)
+    const enrichedData = data
+      .filter(p => !likedSet.has(p.id)) // Only filter already liked profiles
+      .map(p => {
+        const userProfile = userProfiles?.find(up => up.id === p.user_id);
+        
+        // Calculate compatibility score
+        const myHobbies = new Set(myProfile.hobbies || []);
+        const theirHobbies = p.hobbies || [];
+        const mutualHobbies = theirHobbies.filter(h => myHobbies.has(h));
+        
+        let compatibilityScore = 50; // Base score
+        compatibilityScore += mutualHobbies.length * 10; // +10 per mutual hobby
+        if (p.city === myProfile.city) compatibilityScore += 15; // Same neighborhood
+        
+        // Bonus for mutual preference match
         const iAmInterestedInThem = 
           myProfile.looking_for_gender === 'other' || 
           myProfile.looking_for_gender === p.gender;
-        
-        // Check if they're interested in my gender (or they're open to all)
         const theyAreInterestedInMe = 
           p.looking_for_gender === 'other' || 
           p.looking_for_gender === myProfile.gender;
         
-        // Both conditions must be true for compatibility
-        return iAmInterestedInThem && theyAreInterestedInMe;
-      });
+        if (iAmInterestedInThem && theyAreInterestedInMe) {
+          compatibilityScore += 20; // Both interested in each other
+        }
+        
+        compatibilityScore = Math.min(99, compatibilityScore);
 
-      const userIds = compatibleProfiles.map(p => p.user_id);
-      
-      if (userIds.length === 0) {
-        setProfiles([]);
-        return;
-      }
+        return {
+          ...p,
+          user_profile: userProfile,
+          compatibility_score: compatibilityScore,
+          mutual_hobbies: mutualHobbies,
+        };
+      }) as PaqueraProfile[];
 
-      const { data: userProfiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, username, birth_date, avatar_url')
-        .in('id', userIds);
+    // Sort by compatibility score
+    const sorted = enrichedData.sort((a, b) => 
+      (b.compatibility_score || 0) - (a.compatibility_score || 0)
+    );
 
-      const { data: myLikes } = await supabase
-        .from('paquera_likes')
-        .select('liked_id')
-        .eq('liker_id', myProfile.id);
-
-      const likedSet = new Set(myLikes?.map(l => l.liked_id) || []);
-
-      const enrichedData = compatibleProfiles
-        .filter(p => !likedSet.has(p.id))
-        .map(p => {
-          const userProfile = userProfiles?.find(up => up.id === p.user_id);
-          
-          // Calculate compatibility score
-          const myHobbies = new Set(myProfile.hobbies || []);
-          const theirHobbies = p.hobbies || [];
-          const mutualHobbies = theirHobbies.filter(h => myHobbies.has(h));
-          
-          let compatibilityScore = 50; // Base score
-          compatibilityScore += mutualHobbies.length * 10; // +10 per mutual hobby
-          if (p.city === myProfile.city) compatibilityScore += 15; // Same neighborhood
-          compatibilityScore = Math.min(99, compatibilityScore);
-
-          return {
-            ...p,
-            user_profile: userProfile,
-            compatibility_score: compatibilityScore,
-            mutual_hobbies: mutualHobbies,
-          };
-        }) as PaqueraProfile[];
-
-      // Sort by compatibility score
-      const sorted = enrichedData.sort((a, b) => 
-        (b.compatibility_score || 0) - (a.compatibility_score || 0)
-      );
-
-      // Filter by mode
-      let filtered = sorted;
-      if (filterMode === 'nearby' && myProfile.city) {
-        filtered = sorted.filter(p => p.city === myProfile.city);
-      }
-
-      setProfiles(filtered);
-    } else {
-      setProfiles([]);
+    // Filter by mode
+    let filtered = sorted;
+    if (filterMode === 'nearby' && myProfile.city) {
+      filtered = sorted.filter(p => p.city === myProfile.city);
     }
+
+    console.log('Final profiles count:', filtered.length);
+    setProfiles(filtered);
   };
 
   const calculateAge = (birthDate: string | null | undefined) => {
@@ -601,15 +607,25 @@ export default function Paquera() {
           </Card>
         ) : profiles.length === 0 ? (
           <Card className="p-8 text-center">
-            <Heart className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-            <h2 className="text-xl font-bold mb-2">Sem perfis no momento</h2>
+            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-pink-100 to-rose-100 dark:from-pink-900/20 dark:to-rose-900/20 rounded-full flex items-center justify-center">
+              <Heart className="w-10 h-10 text-pink-500" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">Aguardando novos perfis</h2>
             <p className="text-muted-foreground mb-4">
-              Não há mais perfis para mostrar. Tente mudar os filtros ou volte mais tarde!
+              {likedIds.size > 0 
+                ? 'Você já curtiu todos os perfis disponíveis! Volte mais tarde para ver novos usuários.'
+                : 'Ainda não há outros usuários no Paquera. Seja paciente, novos perfis aparecerão em breve!'}
             </p>
-            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+              <Button variant="outline" onClick={() => setShowMatches(true)}>
+                <Users className="w-4 h-4 mr-2" />
+                Ver Matches
+              </Button>
+            </div>
           </Card>
         ) : currentProfile ? (
           <div className="space-y-4">
