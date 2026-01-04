@@ -17,7 +17,8 @@ import {
   Briefcase
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { COMPANY_CATEGORIES, getCategoryLabel, getCategoryIcon } from '@/lib/companyCategories';
+import { getCategoryLabel, getCategoryIcon } from '@/lib/companyCategories';
+import { CategoryFilterDialog } from '@/components/companies/CategoryFilterDialog';
 
 interface Company {
   id: string;
@@ -142,28 +143,22 @@ export default function Companies() {
           </div>
         </div>
 
-        {/* Categories */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          <Button
-            variant={selectedCategory === '' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSelectedCategory('')}
-            className="whitespace-nowrap"
-          >
-            Todas
-          </Button>
-          {COMPANY_CATEGORIES.map((category) => (
-            <Button
-              key={category.value}
-              variant={selectedCategory === category.value ? 'default' : 'outline'}
+        {/* Categories Filter */}
+        <div className="flex items-center gap-4">
+          <CategoryFilterDialog 
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
+          {selectedCategory && (
+            <Button 
+              variant="ghost" 
               size="sm"
-              onClick={() => setSelectedCategory(category.value)}
-              className="whitespace-nowrap gap-1"
+              onClick={() => setSelectedCategory('')}
+              className="text-muted-foreground"
             >
-              <span>{category.icon}</span>
-              {category.label}
+              Limpar filtro
             </Button>
-          ))}
+          )}
         </div>
 
         {/* Quick Links */}
