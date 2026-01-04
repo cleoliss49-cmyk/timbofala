@@ -7,7 +7,6 @@ import {
   Home, 
   Users, 
   MessageCircle, 
-  Search, 
   Calendar, 
   Store, 
   Settings,
@@ -18,8 +17,9 @@ import {
   Heart,
   Building2,
   ShoppingBag,
-  Briefcase,
-  ShoppingCart
+  ShoppingCart,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreatePostDialog } from '@/components/feed/CreatePostDialog';
@@ -29,31 +29,10 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-const mainMenuItems = [
-  { icon: Home, label: 'Feed', path: '/feed' },
-  { icon: ShoppingCart, label: 'Comércios', path: '/empresas' },
-  { icon: ShoppingBag, label: 'Meus Pedidos', path: '/meus-pedidos' },
-  { icon: Compass, label: 'Explorar', path: '/explore' },
-  { icon: Search, label: 'Buscar', path: '/search' },
-  { icon: MessageCircle, label: 'Mensagens', path: '/messages', badge: true },
-];
-
-const communityMenuItems = [
-  { icon: Users, label: 'Comunidade', path: '/community' },
-  { icon: Calendar, label: 'Eventos', path: '/events' },
-  { icon: Store, label: 'Marketplace', path: '/marketplace' },
-  { icon: Heart, label: 'Paquera', path: '/paquera' },
-];
-
-const jobsMenuItems = [
-  { icon: Building2, label: 'Empresas', path: '/companies' },
-  { icon: Briefcase, label: 'Vagas', path: '/vagas' },
-];
-
-const personalMenuItems = [
-  { icon: Bookmark, label: 'Salvos', path: '/saved' },
-  { icon: Settings, label: 'Configurações', path: '/settings' },
-];
+interface DeletedBusinessState {
+  business: boolean;
+  company: boolean;
+}
 
 export function Sidebar({ className, onClose }: SidebarProps) {
   const location = useLocation();
@@ -61,6 +40,10 @@ export function Sidebar({ className, onClose }: SidebarProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [hasBusinessProfile, setHasBusinessProfile] = useState(false);
   const [hasCompanyProfile, setHasCompanyProfile] = useState(false);
+  const [deletedState, setDeletedState] = useState<DeletedBusinessState>({
+    business: false,
+    company: false
+  });
 
   useEffect(() => {
     if (user) {
@@ -71,24 +54,54 @@ export function Sidebar({ className, onClose }: SidebarProps) {
   const checkProfiles = async () => {
     if (!user) return;
 
-    // Check business profile (comércios)
+    // Check business profile (comércios) - including deleted ones
     const { data: businessData } = await supabase
       .from('business_profiles')
-      .select('id')
+      .select('id, is_active')
       .eq('user_id', user.id)
       .maybeSingle();
     
-    setHasBusinessProfile(!!businessData);
+    if (businessData) {
+      setHasBusinessProfile(businessData.is_active !== false);
+      setDeletedState(prev => ({ ...prev, business: businessData.is_active === false }));
+    } else {
+      setHasBusinessProfile(false);
+      setDeletedState(prev => ({ ...prev, business: false }));
+    }
 
-    // Check company profile (empresas)
+    // Check company profile (empresas) - including deleted ones
     const { data: companyData } = await supabase
       .from('companies')
-      .select('id')
+      .select('id, is_active')
       .eq('user_id', user.id)
       .maybeSingle();
     
-    setHasCompanyProfile(!!companyData);
+    if (companyData) {
+      setHasCompanyProfile(companyData.is_active !== false);
+      setDeletedState(prev => ({ ...prev, company: companyData.is_active === false }));
+    } else {
+      setHasCompanyProfile(false);
+      setDeletedState(prev => ({ ...prev, company: false }));
+    }
   };
+
+  // Menu items organized by the new order
+  const mainMenuItems = [
+    { icon: Home, label: 'Feed', path: '/feed' },
+    { icon: Heart, label: 'Paquera', path: '/paquera' },
+    { icon: Users, label: 'Comunidade', path: '/community' },
+    { icon: Building2, label: 'Empresas', path: '/companies' },
+    { icon: ShoppingCart, label: 'Comércios', path: '/empresas' },
+    { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace' },
+    { icon: Compass, label: 'Explorar', path: '/explore' },
+    { icon: Calendar, label: 'Eventos', path: '/events' },
+    { icon: MessageCircle, label: 'Mensagens', path: '/messages', badge: true },
+  ];
+
+  const personalMenuItems = [
+    { icon: Bookmark, label: 'Salvos', path: '/saved' },
+    { icon: Settings, label: 'Configurações', path: '/settings' },
+  ];
 
   const renderMenuItem = (item: typeof mainMenuItems[0]) => {
     const path = item.path === '/profile' ? `/profile/${profile?.username}` : item.path;
@@ -114,6 +127,45 @@ export function Sidebar({ className, onClose }: SidebarProps) {
           <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
         )}
       </Link>
+    );
+  };
+
+  // Deleted business/company recovery card
+  const renderDeletedCard = (type: 'business' | 'company') => {
+    const isDeleted = type === 'business' ? deletedState.business : deletedState.company;
+    if (!isDeleted) return null;
+
+    const typeName = type === 'business' ? 'comércio' : 'empresa';
+    const TypeIcon = type === 'business' ? ShoppingCart : Building2;
+    const createPath = type === 'business' ? '/empresa/criar' : '/empresa/cadastrar';
+    const restorePath = type === 'business' ? '/empresa/restaurar' : '/empresa/restaurar-empresa';
+
+    return (
+      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+        <div className="flex items-center gap-2 text-amber-600">
+          <AlertTriangle className="w-5 h-5" />
+          <span className="font-medium text-sm">
+            Ops! Você excluiu seu {typeName}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Você pode restaurar ou criar um novo.
+        </p>
+        <div className="flex gap-2">
+          <Link to={restorePath} onClick={onClose} className="flex-1">
+            <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs">
+              <RotateCcw className="w-3.5 h-3.5" />
+              Restaurar
+            </Button>
+          </Link>
+          <Link to={createPath} onClick={onClose} className="flex-1">
+            <Button size="sm" className="w-full gap-1.5 text-xs">
+              <TypeIcon className="w-3.5 h-3.5" />
+              Criar Novo
+            </Button>
+          </Link>
+        </div>
+      </div>
     );
   };
 
@@ -150,26 +202,6 @@ export function Sidebar({ className, onClose }: SidebarProps) {
             {mainMenuItems.map(renderMenuItem)}
           </nav>
 
-          {/* Jobs & Companies section */}
-          <div>
-            <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Emprego
-            </h3>
-            <nav className="space-y-1">
-              {jobsMenuItems.map(renderMenuItem)}
-            </nav>
-          </div>
-
-          {/* Community section */}
-          <div>
-            <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Comunidade
-            </h3>
-            <nav className="space-y-1">
-              {communityMenuItems.map(renderMenuItem)}
-            </nav>
-          </div>
-
           {/* Personal section */}
           <div>
             <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -180,46 +212,56 @@ export function Sidebar({ className, onClose }: SidebarProps) {
             </nav>
           </div>
 
-          {/* Business sections */}
+          {/* My Business section */}
           {user && (
             <div>
               <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Meus Negócios
               </h3>
-              <nav className="space-y-1">
-                {/* Comércios (existing system) */}
-                <Link
-                  to={hasBusinessProfile ? '/empresa/gerenciar' : '/empresa/criar'}
-                  onClick={onClose}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
-                    (location.pathname === '/empresa/gerenciar' || location.pathname === '/empresa/criar')
-                      ? 'gradient-primary text-primary-foreground shadow-soft'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110" />
-                  <span className="flex-1">
-                    {hasBusinessProfile ? 'Meu Comércio' : 'Criar Comércio'}
-                  </span>
-                </Link>
+              <nav className="space-y-2">
+                {/* Deleted business recovery */}
+                {renderDeletedCard('business')}
+                
+                {/* Deleted company recovery */}
+                {renderDeletedCard('company')}
 
-                {/* Empresas (new system) */}
-                <Link
-                  to={hasCompanyProfile ? '/empresa/painel' : '/empresa/cadastrar'}
-                  onClick={onClose}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
-                    (location.pathname === '/empresa/painel' || location.pathname === '/empresa/cadastrar')
-                      ? 'gradient-primary text-primary-foreground shadow-soft'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <Building2 className="w-5 h-5 transition-transform group-hover:scale-110" />
-                  <span className="flex-1">
-                    {hasCompanyProfile ? 'Minha Empresa' : 'Cadastrar Empresa'}
-                  </span>
-                </Link>
+                {/* Comércios (existing system) - only show if not deleted */}
+                {!deletedState.business && (
+                  <Link
+                    to={hasBusinessProfile ? '/empresa/gerenciar' : '/empresa/criar'}
+                    onClick={onClose}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
+                      (location.pathname === '/empresa/gerenciar' || location.pathname === '/empresa/criar')
+                        ? 'gradient-primary text-primary-foreground shadow-soft'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110" />
+                    <span className="flex-1">
+                      {hasBusinessProfile ? 'Meu Comércio' : 'Criar Comércio'}
+                    </span>
+                  </Link>
+                )}
+
+                {/* Empresas (new system) - only show if not deleted */}
+                {!deletedState.company && (
+                  <Link
+                    to={hasCompanyProfile ? '/empresa/painel' : '/empresa/cadastrar'}
+                    onClick={onClose}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
+                      (location.pathname === '/empresa/painel' || location.pathname === '/empresa/cadastrar')
+                        ? 'gradient-primary text-primary-foreground shadow-soft'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <Building2 className="w-5 h-5 transition-transform group-hover:scale-110" />
+                    <span className="flex-1">
+                      {hasCompanyProfile ? 'Minha Empresa' : 'Cadastrar Empresa'}
+                    </span>
+                  </Link>
+                )}
               </nav>
             </div>
           )}
