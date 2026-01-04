@@ -1,29 +1,47 @@
 export const COMPANY_CATEGORIES = [
-  { value: 'industria', label: 'Indústria', icon: '🏭', description: 'Metalúrgicas, fábricas, confecções' },
-  { value: 'servicos', label: 'Serviços', icon: '💼', description: 'Contabilidade, advocacia, consultoria' },
-  { value: 'tecnologia', label: 'Tecnologia', icon: '💻', description: 'Desenvolvimento, TI, startups' },
-  { value: 'construcao', label: 'Construção', icon: '🏗️', description: 'Construtoras, engenharia, arquitetura' },
-  { value: 'beleza', label: 'Beleza', icon: '💅', description: 'Salões, estética, cosméticos' },
-  { value: 'saude', label: 'Saúde', icon: '🏥', description: 'Clínicas, laboratórios, farmácias' },
-  { value: 'alimentos', label: 'Alimentos', icon: '🍽️', description: 'Restaurantes, padarias, distribuidoras' },
-  { value: 'educacao', label: 'Educação', icon: '📚', description: 'Escolas, cursos, treinamentos' },
-  { value: 'logistica', label: 'Logística', icon: '🚚', description: 'Transportes, armazenagem, entregas' },
-  { value: 'agronegocio', label: 'Agronegócio', icon: '🌾', description: 'Agricultura, pecuária, insumos' },
-  { value: 'outros', label: 'Outros', icon: '🏢', description: 'Outras categorias' },
+  { value: 'tecnologia', label: 'Tecnologia', icon: '💻', description: 'Software, TI, Startups' },
+  { value: 'industria', label: 'Indústria', icon: '🏭', description: 'Manufatura, Produção' },
+  { value: 'comercio', label: 'Comércio', icon: '🛒', description: 'Varejo, Atacado, Lojas' },
+  { value: 'servicos', label: 'Serviços', icon: '🔧', description: 'Prestação de Serviços' },
+  { value: 'saude', label: 'Saúde', icon: '🏥', description: 'Clínicas, Hospitais, Farmácias' },
+  { value: 'educacao', label: 'Educação', icon: '📚', description: 'Escolas, Cursos, Treinamentos' },
+  { value: 'alimentacao', label: 'Alimentação', icon: '🍽️', description: 'Restaurantes, Bares, Cafés' },
+  { value: 'construcao', label: 'Construção', icon: '🏗️', description: 'Engenharia, Arquitetura' },
+  { value: 'logistica', label: 'Logística', icon: '🚚', description: 'Transporte, Entregas' },
+  { value: 'financeiro', label: 'Financeiro', icon: '💰', description: 'Bancos, Contabilidade' },
+  { value: 'juridico', label: 'Jurídico', icon: '⚖️', description: 'Advocacia, Consultoria' },
+  { value: 'marketing', label: 'Marketing', icon: '📢', description: 'Publicidade, Design' },
+  { value: 'imobiliario', label: 'Imobiliário', icon: '🏠', description: 'Imóveis, Corretagem' },
+  { value: 'agronegocio', label: 'Agronegócio', icon: '🌾', description: 'Agricultura, Pecuária' },
+  { value: 'beleza', label: 'Beleza', icon: '💇', description: 'Salões, Estética' },
+  { value: 'automotivo', label: 'Automotivo', icon: '🚗', description: 'Oficinas, Concessionárias' },
+  { value: 'turismo', label: 'Turismo', icon: '✈️', description: 'Viagens, Hotelaria' },
+  { value: 'energia', label: 'Energia', icon: '⚡', description: 'Elétrica, Solar, Renovável' },
+  { value: 'textil', label: 'Têxtil', icon: '🧵', description: 'Confecção, Moda' },
+  { value: 'outros', label: 'Outros', icon: '📦', description: 'Outras categorias' },
+] as const;
+
+export const COMPANY_SIZES = [
+  { value: 'mei', label: 'MEI', description: 'Microempreendedor Individual' },
+  { value: 'micro', label: 'Microempresa', description: 'Até 9 funcionários' },
+  { value: 'pequena', label: 'Pequena', description: '10 a 49 funcionários' },
+  { value: 'media', label: 'Média', description: '50 a 99 funcionários' },
+  { value: 'grande', label: 'Grande', description: '100+ funcionários' },
 ] as const;
 
 export const EMPLOYMENT_TYPES = [
-  { value: 'full_time', label: 'Tempo Integral' },
-  { value: 'part_time', label: 'Meio Período' },
-  { value: 'contract', label: 'Contrato' },
-  { value: 'internship', label: 'Estágio' },
-  { value: 'freelance', label: 'Freelancer' },
+  { value: 'full_time', label: 'Tempo Integral', icon: '⏰' },
+  { value: 'part_time', label: 'Meio Período', icon: '⌛' },
+  { value: 'temporary', label: 'Temporário', icon: '📅' },
+  { value: 'internship', label: 'Estágio', icon: '🎓' },
+  { value: 'freelance', label: 'Freelancer', icon: '💼' },
+  { value: 'trainee', label: 'Trainee', icon: '🌟' },
 ] as const;
 
 export const WORK_MODES = [
-  { value: 'onsite', label: 'Presencial' },
-  { value: 'remote', label: 'Remoto' },
-  { value: 'hybrid', label: 'Híbrido' },
+  { value: 'presential', label: 'Presencial', icon: '🏢' },
+  { value: 'remote', label: 'Remoto', icon: '🏠' },
+  { value: 'hybrid', label: 'Híbrido', icon: '🔄' },
 ] as const;
 
 export const APPLICATION_STATUS = [
@@ -41,7 +59,7 @@ export function getCategoryLabel(value: string): string {
 
 export function getCategoryIcon(value: string): string {
   const category = COMPANY_CATEGORIES.find(c => c.value === value);
-  return category?.icon || '🏢';
+  return category?.icon || '📦';
 }
 
 export function getEmploymentTypeLabel(value: string): string {
@@ -62,4 +80,9 @@ export function getApplicationStatusLabel(value: string): string {
 export function getApplicationStatusColor(value: string): string {
   const status = APPLICATION_STATUS.find(s => s.value === value);
   return status?.color || 'bg-gray-500';
+}
+
+export function getCompanySizeLabel(value: string): string {
+  const size = COMPANY_SIZES.find(s => s.value === value);
+  return size?.label || value;
 }

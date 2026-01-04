@@ -10,6 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Building2,
   Briefcase,
@@ -20,10 +24,25 @@ import {
   FileText,
   Image,
   Wrench,
-  ExternalLink,
   BadgeCheck,
+  Save,
+  Loader2,
+  Upload,
+  Phone,
+  Mail,
+  Globe,
+  MapPin,
 } from 'lucide-react';
-import { getCategoryLabel, getCategoryIcon, getApplicationStatusLabel, getApplicationStatusColor } from '@/lib/companyCategories';
+import { 
+  getCategoryLabel, 
+  getCategoryIcon, 
+  getApplicationStatusLabel, 
+  getApplicationStatusColor,
+  COMPANY_CATEGORIES,
+  COMPANY_SIZES,
+  getCompanySizeLabel
+} from '@/lib/companyCategories';
+import { NEIGHBORHOODS } from '@/lib/neighborhoods';
 
 interface Company {
   id: string;
@@ -34,6 +53,15 @@ interface Company {
   cover_url: string | null;
   category: string;
   city: string;
+  neighborhood: string | null;
+  address: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  linkedin: string | null;
   is_verified: boolean;
 }
 
@@ -65,6 +93,7 @@ export default function CompanyDashboard() {
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
   const [jobs, setJobs] = useState<JobListing[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -73,6 +102,23 @@ export default function CompanyDashboard() {
     activeJobs: 0,
     totalApplications: 0,
     pendingApplications: 0,
+  });
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    category: '',
+    phone: '',
+    whatsapp: '',
+    email: '',
+    website: '',
+    instagram: '',
+    facebook: '',
+    linkedin: '',
+    city: '',
+    neighborhood: '',
+    address: '',
   });
 
   useEffect(() => {
@@ -100,6 +146,21 @@ export default function CompanyDashboard() {
       }
 
       setCompany(companyData);
+      setEditForm({
+        name: companyData.name || '',
+        description: companyData.description || '',
+        category: companyData.category || '',
+        phone: companyData.phone || '',
+        whatsapp: companyData.whatsapp || '',
+        email: companyData.email || '',
+        website: companyData.website || '',
+        instagram: companyData.instagram || '',
+        facebook: companyData.facebook || '',
+        linkedin: companyData.linkedin || '',
+        city: companyData.city || '',
+        neighborhood: companyData.neighborhood || '',
+        address: companyData.address || '',
+      });
 
       // Fetch jobs
       const { data: jobsData } = await supabase
@@ -133,6 +194,50 @@ export default function CompanyDashboard() {
       console.error('Error fetching company data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!company) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update({
+          name: editForm.name,
+          description: editForm.description || null,
+          category: editForm.category,
+          phone: editForm.phone || null,
+          whatsapp: editForm.whatsapp || null,
+          email: editForm.email || null,
+          website: editForm.website || null,
+          instagram: editForm.instagram || null,
+          facebook: editForm.facebook || null,
+          linkedin: editForm.linkedin || null,
+          city: editForm.city,
+          neighborhood: editForm.neighborhood || null,
+          address: editForm.address || null,
+        })
+        .eq('id', company.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Perfil atualizado',
+        description: 'As informações da empresa foram salvas.',
+      });
+
+      fetchCompanyData();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar as alterações.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -224,12 +329,6 @@ export default function CompanyDashboard() {
                   Ver Página
                 </Button>
               </Link>
-              <Link to="/empresa/editar">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Settings className="w-4 h-4" />
-                  Editar
-                </Button>
-              </Link>
             </div>
           </div>
         </div>
@@ -292,7 +391,7 @@ export default function CompanyDashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="jobs" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="jobs" className="gap-2">
               <Briefcase className="w-4 h-4" />
               Vagas
@@ -308,6 +407,10 @@ export default function CompanyDashboard() {
             <TabsTrigger value="services" className="gap-2">
               <Wrench className="w-4 h-4" />
               Serviços
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2">
+              <Settings className="w-4 h-4" />
+              Configurações
             </TabsTrigger>
           </TabsList>
 
@@ -352,9 +455,9 @@ export default function CompanyDashboard() {
                             {job.applications_count} candidatura{job.applications_count !== 1 ? 's' : ''}
                           </p>
                         </div>
-                        <Link to={`/empresa/vagas/${job.id}`}>
+                        <Link to={`/vagas/${job.id}`}>
                           <Button variant="outline" size="sm">
-                            Gerenciar
+                            Ver Detalhes
                           </Button>
                         </Link>
                       </div>
@@ -383,8 +486,8 @@ export default function CompanyDashboard() {
                 {applications.map((application) => (
                   <Card key={application.id}>
                     <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex-1 min-w-[200px]">
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold">{application.full_name}</h3>
                             <Badge className={getApplicationStatusColor(application.status)}>
@@ -395,7 +498,7 @@ export default function CompanyDashboard() {
                             {application.email} • Vaga: {application.job_listings?.title}
                           </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                           <a
                             href={application.resume_url}
                             target="_blank"
@@ -406,17 +509,21 @@ export default function CompanyDashboard() {
                               Currículo
                             </Button>
                           </a>
-                          <select
+                          <Select
                             value={application.status}
-                            onChange={(e) => updateApplicationStatus(application.id, e.target.value)}
-                            className="text-sm border rounded px-2 py-1"
+                            onValueChange={(value) => updateApplicationStatus(application.id, value)}
                           >
-                            <option value="pending">Pendente</option>
-                            <option value="reviewed">Visualizado</option>
-                            <option value="shortlisted">Pré-selecionado</option>
-                            <option value="rejected">Não selecionado</option>
-                            <option value="hired">Contratado</option>
-                          </select>
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pendente</SelectItem>
+                              <SelectItem value="reviewed">Visualizado</SelectItem>
+                              <SelectItem value="shortlisted">Pré-selecionado</SelectItem>
+                              <SelectItem value="rejected">Não selecionado</SelectItem>
+                              <SelectItem value="hired">Contratado</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </CardContent>
@@ -429,12 +536,10 @@ export default function CompanyDashboard() {
           <TabsContent value="portfolio" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Portfólio</h2>
-              <Link to="/empresa/portfolio/novo">
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Adicionar Projeto
-                </Button>
-              </Link>
+              <Button className="gap-2">
+                <Plus className="w-4 h-4" />
+                Adicionar Projeto
+              </Button>
             </div>
 
             <Card>
@@ -444,9 +549,7 @@ export default function CompanyDashboard() {
                 <p className="text-muted-foreground mb-4">
                   Adicione projetos para mostrar seu trabalho.
                 </p>
-                <Link to="/empresa/portfolio/novo">
-                  <Button>Adicionar Projeto</Button>
-                </Link>
+                <Button>Adicionar Projeto</Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -454,12 +557,10 @@ export default function CompanyDashboard() {
           <TabsContent value="services" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Serviços</h2>
-              <Link to="/empresa/servicos/novo">
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Adicionar Serviço
-                </Button>
-              </Link>
+              <Button className="gap-2">
+                <Plus className="w-4 h-4" />
+                Adicionar Serviço
+              </Button>
             </div>
 
             <Card>
@@ -469,11 +570,201 @@ export default function CompanyDashboard() {
                 <p className="text-muted-foreground mb-4">
                   Cadastre os serviços que sua empresa oferece.
                 </p>
-                <Link to="/empresa/servicos/novo">
-                  <Button>Adicionar Serviço</Button>
-                </Link>
+                <Button>Adicionar Serviço</Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-4">
+            <h2 className="text-lg font-semibold">Configurações da Empresa</h2>
+
+            <div className="grid gap-6">
+              {/* Basic Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5" />
+                    Informações Básicas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome da Empresa</Label>
+                    <Input
+                      id="name"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Categoria</Label>
+                    <Select
+                      value={editForm.category}
+                      onValueChange={(value) => setEditForm({ ...editForm, category: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COMPANY_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.icon} {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      rows={4}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Phone className="w-5 h-5" />
+                    Contato
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Telefone</Label>
+                      <Input
+                        id="phone"
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp">WhatsApp</Label>
+                      <Input
+                        id="whatsapp"
+                        value={editForm.whatsapp}
+                        onChange={(e) => setEditForm({ ...editForm, whatsapp: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      value={editForm.website}
+                      onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram">Instagram</Label>
+                      <Input
+                        id="instagram"
+                        value={editForm.instagram}
+                        onChange={(e) => setEditForm({ ...editForm, instagram: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="facebook">Facebook</Label>
+                      <Input
+                        id="facebook"
+                        value={editForm.facebook}
+                        onChange={(e) => setEditForm({ ...editForm, facebook: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="linkedin">LinkedIn</Label>
+                      <Input
+                        id="linkedin"
+                        value={editForm.linkedin}
+                        onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Location */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    Localização
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Cidade</Label>
+                      <Input
+                        id="city"
+                        value={editForm.city}
+                        onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="neighborhood">Bairro</Label>
+                      <Select
+                        value={editForm.neighborhood}
+                        onValueChange={(value) => setEditForm({ ...editForm, neighborhood: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {NEIGHBORHOODS.map((n) => (
+                            <SelectItem key={n} value={n}>{n}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Endereço</Label>
+                    <Input
+                      id="address"
+                      value={editForm.address}
+                      onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Button onClick={handleSaveProfile} disabled={saving} className="w-full gap-2">
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Salvar Alterações
+                  </>
+                )}
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
