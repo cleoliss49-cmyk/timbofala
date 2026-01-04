@@ -376,7 +376,9 @@ export function PaqueraSetupDialog({
                   Aceito os termos e políticas de privacidade
                 </label>
                 <p className="text-xs text-muted-foreground">
-                  Confirmo ter mais de 18 anos e aceito as regras do Paquera.
+                  Confirmo ter mais de 18 anos e aceito as regras do Paquera. 
+                  <strong className="block mt-1">Os primeiros 10 pares/matches são gratuitos.</strong> 
+                  Após isso, o acesso ao Paquera custa <strong>R$ 29,90/mês</strong> para uso ilimitado.
                 </p>
               </div>
             </div>

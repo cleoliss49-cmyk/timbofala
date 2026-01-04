@@ -113,6 +113,41 @@ export default function Paquera() {
   };
 
   const checkAccessStatus = async (profileId: string) => {
+    // First check subscription expiry
+    const { data: subscription } = await supabase
+      .from('paquera_subscriptions')
+      .select('*')
+      .eq('paquera_profile_id', profileId)
+      .maybeSingle();
+
+    // If subscription exists and is expired, update status and show payment dialog
+    if (subscription && subscription.status === 'active' && subscription.expires_at) {
+      const expiresAt = new Date(subscription.expires_at);
+      if (expiresAt < new Date()) {
+        // Subscription expired - update status to expired
+        await supabase
+          .from('paquera_subscriptions')
+          .update({ status: 'expired', interactions_count: 0 })
+          .eq('id', subscription.id);
+
+        setAccessInfo({
+          canInteract: false,
+          interactionsRemaining: 0,
+          needsPayment: true,
+          status: 'expired'
+        });
+
+        toast({
+          title: 'Assinatura expirada',
+          description: 'Sua assinatura do Paquera expirou. Renove para continuar usando!',
+          variant: 'destructive',
+        });
+
+        setShowPaymentDialog(true);
+        return;
+      }
+    }
+
     const { data, error } = await supabase.rpc('check_paquera_access', {
       p_profile_id: profileId
     });
