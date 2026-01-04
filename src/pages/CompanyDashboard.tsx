@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -27,11 +27,9 @@ import {
   BadgeCheck,
   Save,
   Loader2,
-  Upload,
   Phone,
-  Mail,
-  Globe,
   MapPin,
+  PenSquare,
 } from 'lucide-react';
 import { 
   getCategoryLabel, 
@@ -39,10 +37,10 @@ import {
   getApplicationStatusLabel, 
   getApplicationStatusColor,
   COMPANY_CATEGORIES,
-  COMPANY_SIZES,
-  getCompanySizeLabel
 } from '@/lib/companyCategories';
 import { NEIGHBORHOODS } from '@/lib/neighborhoods';
+import { AddPortfolioDialog } from '@/components/company/AddPortfolioDialog';
+import { CreateCompanyPostDialog } from '@/components/company/CreateCompanyPostDialog';
 
 interface Company {
   id: string;
@@ -87,6 +85,14 @@ interface JobApplication {
   };
 }
 
+interface PortfolioItem {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  project_url: string | null;
+}
+
 export default function CompanyDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -97,6 +103,9 @@ export default function CompanyDashboard() {
   const [company, setCompany] = useState<Company | null>(null);
   const [jobs, setJobs] = useState<JobListing[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+  const [showAddPortfolioDialog, setShowAddPortfolioDialog] = useState(false);
+  const [showCreatePostDialog, setShowCreatePostDialog] = useState(false);
   const [stats, setStats] = useState({
     totalJobs: 0,
     activeJobs: 0,
@@ -182,6 +191,15 @@ export default function CompanyDashboard() {
         .order('created_at', { ascending: false });
 
       setApplications(applicationsData || []);
+
+      // Fetch portfolio
+      const { data: portfolioData } = await supabase
+        .from('company_portfolio')
+        .select('*')
+        .eq('company_id', companyData.id)
+        .order('sort_order', { ascending: true });
+
+      setPortfolio(portfolioData || []);
 
       // Calculate stats
       setStats({
@@ -323,6 +341,15 @@ export default function CompanyDashboard() {
             </div>
 
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                onClick={() => setShowCreatePostDialog(true)}
+              >
+                <PenSquare className="w-4 h-4" />
+                Publicar
+              </Button>
               <Link to={`/company/${company.slug}`}>
                 <Button variant="outline" size="sm" className="gap-2">
                   <Eye className="w-4 h-4" />
@@ -536,22 +563,48 @@ export default function CompanyDashboard() {
           <TabsContent value="portfolio" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Portfólio</h2>
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={() => setShowAddPortfolioDialog(true)}>
                 <Plus className="w-4 h-4" />
                 Adicionar Projeto
               </Button>
             </div>
 
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Image className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Nenhum projeto no portfólio</h3>
-                <p className="text-muted-foreground mb-4">
-                  Adicione projetos para mostrar seu trabalho.
-                </p>
-                <Button>Adicionar Projeto</Button>
-              </CardContent>
-            </Card>
+            {portfolio.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Image className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nenhum projeto no portfólio</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Adicione projetos para mostrar seu trabalho.
+                  </p>
+                  <Button onClick={() => setShowAddPortfolioDialog(true)}>Adicionar Projeto</Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {portfolio.map((item) => (
+                  <Card key={item.id} className="overflow-hidden">
+                    {item.image_url && (
+                      <div className="aspect-video">
+                        <img
+                          src={item.image_url}
+                          alt={item.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold">{item.title}</h3>
+                      {item.description && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {item.description}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="services" className="space-y-4">
@@ -768,6 +821,23 @@ export default function CompanyDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {company && (
+        <>
+          <AddPortfolioDialog
+            open={showAddPortfolioDialog}
+            onOpenChange={setShowAddPortfolioDialog}
+            companyId={company.id}
+            onProjectAdded={fetchCompanyData}
+          />
+          <CreateCompanyPostDialog
+            open={showCreatePostDialog}
+            onOpenChange={setShowCreatePostDialog}
+            companyId={company.id}
+            onPostCreated={fetchCompanyData}
+          />
+        </>
+      )}
     </MainLayout>
   );
 }

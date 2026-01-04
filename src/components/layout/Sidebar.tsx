@@ -8,7 +8,6 @@ import {
   Users, 
   MessageCircle, 
   Calendar, 
-  Store, 
   Settings,
   Compass,
   Bookmark,
@@ -18,11 +17,11 @@ import {
   Building2,
   ShoppingBag,
   ShoppingCart,
-  RotateCcw,
-  AlertTriangle
+  Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreatePostDialog } from '@/components/feed/CreatePostDialog';
+import { DeletedBusinessDialog } from '@/components/dialogs/DeletedBusinessDialog';
 
 interface SidebarProps {
   className?: string;
@@ -44,6 +43,7 @@ export function Sidebar({ className, onClose }: SidebarProps) {
     business: false,
     company: false
   });
+  const [showDeletedDialog, setShowDeletedDialog] = useState<'business' | 'company' | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -92,6 +92,7 @@ export function Sidebar({ className, onClose }: SidebarProps) {
     { icon: Users, label: 'Comunidade', path: '/community' },
     { icon: Building2, label: 'Empresas', path: '/companies' },
     { icon: ShoppingCart, label: 'Comércios', path: '/empresas' },
+    { icon: Briefcase, label: 'Vagas', path: '/vagas' },
     { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace' },
     { icon: Compass, label: 'Explorar', path: '/explore' },
     { icon: Calendar, label: 'Eventos', path: '/events' },
@@ -107,7 +108,8 @@ export function Sidebar({ className, onClose }: SidebarProps) {
     const path = item.path === '/profile' ? `/profile/${profile?.username}` : item.path;
     const isActive = location.pathname === path || 
       (item.path === '/profile' && location.pathname.startsWith('/profile/')) ||
-      (item.path === '/messages' && location.pathname.startsWith('/messages/'));
+      (item.path === '/messages' && location.pathname.startsWith('/messages/')) ||
+      (item.path === '/vagas' && location.pathname.startsWith('/vagas/'));
 
     return (
       <Link
@@ -130,43 +132,14 @@ export function Sidebar({ className, onClose }: SidebarProps) {
     );
   };
 
-  // Deleted business/company recovery card
-  const renderDeletedCard = (type: 'business' | 'company') => {
-    const isDeleted = type === 'business' ? deletedState.business : deletedState.company;
-    if (!isDeleted) return null;
-
-    const typeName = type === 'business' ? 'comércio' : 'empresa';
-    const TypeIcon = type === 'business' ? ShoppingCart : Building2;
-    const createPath = type === 'business' ? '/empresa/criar' : '/empresa/cadastrar';
-    const restorePath = type === 'business' ? '/empresa/restaurar' : '/empresa/restaurar-empresa';
-
-    return (
-      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
-        <div className="flex items-center gap-2 text-amber-600">
-          <AlertTriangle className="w-5 h-5" />
-          <span className="font-medium text-sm">
-            Ops! Você excluiu seu {typeName}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Você pode restaurar ou criar um novo.
-        </p>
-        <div className="flex gap-2">
-          <Link to={restorePath} onClick={onClose} className="flex-1">
-            <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs">
-              <RotateCcw className="w-3.5 h-3.5" />
-              Restaurar
-            </Button>
-          </Link>
-          <Link to={createPath} onClick={onClose} className="flex-1">
-            <Button size="sm" className="w-full gap-1.5 text-xs">
-              <TypeIcon className="w-3.5 h-3.5" />
-              Criar Novo
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
+  const handleBusinessNavClick = (type: 'business' | 'company', e: React.MouseEvent) => {
+    if (type === 'business' && deletedState.business) {
+      e.preventDefault();
+      setShowDeletedDialog('business');
+    } else if (type === 'company' && deletedState.company) {
+      e.preventDefault();
+      setShowDeletedDialog('company');
+    }
   };
 
   return (
@@ -219,49 +192,39 @@ export function Sidebar({ className, onClose }: SidebarProps) {
                 Meus Negócios
               </h3>
               <nav className="space-y-2">
-                {/* Deleted business recovery */}
-                {renderDeletedCard('business')}
-                
-                {/* Deleted company recovery */}
-                {renderDeletedCard('company')}
+                {/* Comércios (existing system) */}
+                <Link
+                  to={deletedState.business ? '#' : (hasBusinessProfile ? '/empresa/gerenciar' : '/empresa/criar')}
+                  onClick={(e) => handleBusinessNavClick('business', e)}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
+                    (location.pathname === '/empresa/gerenciar' || location.pathname === '/empresa/criar')
+                      ? 'gradient-primary text-primary-foreground shadow-soft'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110" />
+                  <span className="flex-1">
+                    {deletedState.business ? 'Comércio' : (hasBusinessProfile ? 'Meu Comércio' : 'Criar Comércio')}
+                  </span>
+                </Link>
 
-                {/* Comércios (existing system) - only show if not deleted */}
-                {!deletedState.business && (
-                  <Link
-                    to={hasBusinessProfile ? '/empresa/gerenciar' : '/empresa/criar'}
-                    onClick={onClose}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
-                      (location.pathname === '/empresa/gerenciar' || location.pathname === '/empresa/criar')
-                        ? 'gradient-primary text-primary-foreground shadow-soft'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110" />
-                    <span className="flex-1">
-                      {hasBusinessProfile ? 'Meu Comércio' : 'Criar Comércio'}
-                    </span>
-                  </Link>
-                )}
-
-                {/* Empresas (new system) - only show if not deleted */}
-                {!deletedState.company && (
-                  <Link
-                    to={hasCompanyProfile ? '/empresa/painel' : '/empresa/cadastrar'}
-                    onClick={onClose}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
-                      (location.pathname === '/empresa/painel' || location.pathname === '/empresa/cadastrar')
-                        ? 'gradient-primary text-primary-foreground shadow-soft'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    <Building2 className="w-5 h-5 transition-transform group-hover:scale-110" />
-                    <span className="flex-1">
-                      {hasCompanyProfile ? 'Minha Empresa' : 'Cadastrar Empresa'}
-                    </span>
-                  </Link>
-                )}
+                {/* Empresas (new system) */}
+                <Link
+                  to={deletedState.company ? '#' : (hasCompanyProfile ? '/empresa/painel' : '/empresa/cadastrar')}
+                  onClick={(e) => handleBusinessNavClick('company', e)}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group',
+                    (location.pathname === '/empresa/painel' || location.pathname === '/empresa/cadastrar')
+                      ? 'gradient-primary text-primary-foreground shadow-soft'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <Building2 className="w-5 h-5 transition-transform group-hover:scale-110" />
+                  <span className="flex-1">
+                    {deletedState.company ? 'Empresa' : (hasCompanyProfile ? 'Minha Empresa' : 'Cadastrar Empresa')}
+                  </span>
+                </Link>
               </nav>
             </div>
           )}
@@ -291,6 +254,14 @@ export function Sidebar({ className, onClose }: SidebarProps) {
         open={showCreateDialog} 
         onOpenChange={setShowCreateDialog}
       />
+
+      {showDeletedDialog && (
+        <DeletedBusinessDialog
+          open={!!showDeletedDialog}
+          onOpenChange={(open) => !open && setShowDeletedDialog(null)}
+          type={showDeletedDialog}
+        />
+      )}
     </>
   );
 }
