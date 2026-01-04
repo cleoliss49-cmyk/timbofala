@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import AdminPaqueraPage from "./pages/AdminPaquera";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -34,7 +35,7 @@ import BusinessPaymentSettings from "./pages/BusinessPaymentSettings";
 import ConhecerPlataforma from "./pages/ConhecerPlataforma";
 import ConhecerEmpresas from "./pages/ConhecerEmpresas";
 import AdminCommissions from "./pages/AdminCommissions";
-
+import TermsOfService from "./pages/TermsOfService";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -73,9 +74,11 @@ const App = () => (
               <Route path="/meus-pedidos" element={<MyOrders />} />
               <Route path="/conhecer" element={<ConhecerPlataforma />} />
               <Route path="/conhecer-empresas" element={<ConhecerEmpresas />} />
+              <Route path="/termos" element={<TermsOfService />} />
               <Route path="/admtbo" element={<AdminAuth />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/admin/comissoes" element={<AdminCommissions />} />
+              <Route path="/admin/paquera" element={<AdminPaqueraPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ErrorBoundary>

@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   MessageCircle, ArrowLeft, Store, Package, CreditCard, 
-  Truck, Clock, Star, Settings, BarChart3, Tag, Users,
+  Truck, Clock, Star, BarChart3, Tag, Users,
   Wallet, MapPin, Bell, MessageSquare, Camera, Sparkles,
-  CheckCircle, TrendingUp, Shield, Zap, DollarSign, Percent
+  CheckCircle, Shield, Zap, Percent, TrendingUp, FileText
 } from 'lucide-react';
 
 const benefits = [
@@ -16,9 +16,9 @@ const benefits = [
     description: 'Conecte-se com milhares de moradores de Timbó que usam o app diariamente.'
   },
   {
-    icon: DollarSign,
-    title: '100% Gratuito',
-    description: 'Sem taxas de adesão, mensalidade ou comissão sobre vendas. Você fica com tudo!'
+    icon: Percent,
+    title: 'Apenas 7% de Comissão',
+    description: 'Pague apenas 7% sobre pedidos concluídos. Sem taxas fixas ou mensalidades!'
   },
   {
     icon: Zap,
@@ -27,8 +27,8 @@ const benefits = [
   },
   {
     icon: Shield,
-    title: 'Pagamento Direto',
-    description: 'O cliente paga diretamente para você. Não intermediamos pagamentos.'
+    title: 'Pagamento Seguro',
+    description: 'O cliente paga diretamente para você via PIX, cartão ou dinheiro.'
   }
 ];
 
@@ -82,7 +82,7 @@ const features = [
     color: 'from-amber-500 to-yellow-500'
   },
   {
-    icon: Percent,
+    icon: Tag,
     title: 'Cupons de Desconto',
     description: 'Crie cupons promocionais para atrair novos clientes e fidelizar os antigos.',
     color: 'from-pink-500 to-rose-500'
@@ -126,12 +126,11 @@ const steps = [
   {
     number: '4',
     title: 'Comece a Vender',
-    description: 'Receba pedidos e gerencie tudo pelo app!'
+    description: 'Receba pedidos e pague apenas 7% de comissão!'
   }
 ];
 
 export default function ConhecerEmpresas() {
-  // Scroll to top on mount
   React.useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -169,16 +168,68 @@ export default function ConhecerEmpresas() {
             Venda para toda <span className="text-primary">Timbó</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-            Crie sua loja virtual gratuita, receba pedidos online e aumente suas vendas. 
-            Sem taxas, sem comissões - você fica com 100% do valor!
+            Crie sua loja virtual, receba pedidos online e aumente suas vendas. 
+            <strong className="text-foreground"> Pague apenas 7% de comissão sobre pedidos concluídos!</strong>
           </p>
           <Link to="/auth">
             <Button size="lg" className="h-14 px-8 text-lg bg-emerald-600 hover:bg-emerald-700">
               <Store className="w-5 h-5 mr-2" />
-              Criar Minha Loja Grátis
+              Criar Minha Loja
             </Button>
           </Link>
         </div>
+
+        {/* Commission Info Card */}
+        <section className="mb-20">
+          <Card className="border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-green-500/5">
+            <CardHeader className="text-center">
+              <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+                <Percent className="w-10 h-10 text-emerald-600" />
+              </div>
+              <CardTitle className="text-2xl">Modelo de Comissão Transparente</CardTitle>
+              <CardDescription className="text-lg">
+                Entenda como funciona nossa taxa
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-6 text-center">
+                <div className="p-6 bg-background rounded-xl border">
+                  <div className="text-4xl font-bold text-emerald-600 mb-2">7%</div>
+                  <p className="font-medium mb-1">Comissão por Pedido</p>
+                  <p className="text-sm text-muted-foreground">
+                    Cobrada apenas sobre pedidos entregues com sucesso
+                  </p>
+                </div>
+                <div className="p-6 bg-background rounded-xl border">
+                  <div className="text-4xl font-bold text-emerald-600 mb-2">R$ 0</div>
+                  <p className="font-medium mb-1">Taxa de Adesão</p>
+                  <p className="text-sm text-muted-foreground">
+                    Sem custos para começar a vender
+                  </p>
+                </div>
+                <div className="p-6 bg-background rounded-xl border">
+                  <div className="text-4xl font-bold text-emerald-600 mb-2">R$ 0</div>
+                  <p className="font-medium mb-1">Mensalidade</p>
+                  <p className="text-sm text-muted-foreground">
+                    Pague apenas quando vender
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-8 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">Como funciona:</p>
+                    <p>A comissão de 7% é calculada sobre o valor total do pedido (produtos + entrega). 
+                    Você recebe o pagamento integral do cliente e paga a comissão mensalmente através da plataforma. 
+                    É simples e transparente!</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
 
         {/* Benefits */}
         <section className="mb-20">
@@ -255,7 +306,7 @@ export default function ConhecerEmpresas() {
               </CardHeader>
               <CardContent className="text-center">
                 <p className="text-sm text-muted-foreground mb-4">
-                  Receba instantaneamente direto na sua conta. Sem intermediários, sem taxas!
+                  Receba instantaneamente direto na sua conta. Configure sua chave PIX!
                 </p>
                 <div className="flex items-center justify-center gap-2 text-green-600 text-sm font-medium">
                   <CheckCircle className="w-4 h-4" />
@@ -284,7 +335,7 @@ export default function ConhecerEmpresas() {
             <Card>
               <CardHeader className="text-center pb-2">
                 <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
-                  <DollarSign className="w-8 h-8 text-amber-600" />
+                  <TrendingUp className="w-8 h-8 text-amber-600" />
                 </div>
                 <CardTitle>Dinheiro</CardTitle>
               </CardHeader>
@@ -305,13 +356,13 @@ export default function ConhecerEmpresas() {
           <Store className="w-16 h-16 mx-auto mb-6 text-emerald-600" />
           <h2 className="text-2xl font-bold mb-4">Pronto para vender mais?</h2>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Crie sua loja virtual gratuita em minutos e comece a receber pedidos de toda Timbó!
+            Crie sua loja virtual em minutos, pague apenas 7% de comissão e comece a receber pedidos de toda Timbó!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/auth">
               <Button size="lg" className="h-12 px-8 bg-emerald-600 hover:bg-emerald-700">
                 <Store className="w-5 h-5 mr-2" />
-                Criar Minha Loja Grátis
+                Criar Minha Loja
               </Button>
             </Link>
             <Link to="/empresas">

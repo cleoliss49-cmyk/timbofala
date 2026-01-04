@@ -2,65 +2,231 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
 
-    <title>Timbó Fala</title>
-    <meta
-      name="description"
-      content="Timbó Fala é a rede social da cidade de Timbó: comunidade, eventos, negócios locais e marketplace em um só lugar."
-    />
-    <link rel="canonical" href="/" />
+    <!-- Primary Meta Tags -->
+    <title>Timbó Fala - A Rede Social de Timbó, SC | Comunidade, Eventos, Comércios e Paquera</title>
+    <meta name="title" content="Timbó Fala - A Rede Social de Timbó, SC" />
+    <meta name="description" content="Timbó Fala é a rede social exclusiva de Timbó, SC. Conecte-se com vizinhos, descubra eventos locais, apoie comércios da região, faça pedidos online e encontre pessoas especiais. Baixe grátis!" />
+    <meta name="keywords" content="Timbó, rede social, Timbó Fala, comunidade Timbó, eventos Timbó, comércio local Timbó, delivery Timbó, paquera Timbó, Santa Catarina, SC, Vale Europeu, social network, marketplace local" />
+    <meta name="author" content="Bruno Eduardo Ochner" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    <link rel="canonical" href="https://timbofala.com.br/" />
 
+    <!-- PWA Meta Tags -->
     <meta name="application-name" content="Timbó Fala" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Timbó Fala" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#ff4f0a" />
+    <meta name="msapplication-TileColor" content="#ff4f0a" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
 
+    <!-- Geo Tags for Local SEO -->
+    <meta name="geo.region" content="BR-SC" />
+    <meta name="geo.placename" content="Timbó" />
+    <meta name="geo.position" content="-26.8247;-49.2733" />
+    <meta name="ICBM" content="-26.8247, -49.2733" />
+
+    <!-- Icons -->
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png" />
+    <link rel="mask-icon" href="/favicon.png" color="#ff4f0a" />
 
-    <!-- Open Graph / WhatsApp -->
-    <meta property="og:site_name" content="Timbó Fala" />
-    <meta property="og:title" content="Timbó Fala" />
-    <meta
-      property="og:description"
-      content="A rede social de Timbó — conecte-se com a comunidade, descubra lojas, faça pedidos e participe de eventos."
-    />
+    <!-- Open Graph / Facebook / WhatsApp -->
     <meta property="og:type" content="website" />
-    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:url" content="https://timbofala.com.br/" />
+    <meta property="og:site_name" content="Timbó Fala" />
+    <meta property="og:title" content="Timbó Fala - A Rede Social de Timbó, SC" />
+    <meta property="og:description" content="A rede social exclusiva de Timbó, SC. Conecte-se com vizinhos, descubra eventos, apoie comércios locais, faça pedidos e encontre pessoas especiais!" />
     <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Timbó Fala - Conecte-se com a comunidade de Timbó" />
+    <meta property="og:locale" content="pt_BR" />
 
-    <!-- Twitter -->
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Timbó Fala" />
-    <meta
-      name="twitter:description"
-      content="A rede social de Timbó — comunidade, negócios locais, pedidos e eventos."
-    />
+    <meta name="twitter:url" content="https://timbofala.com.br/" />
+    <meta name="twitter:title" content="Timbó Fala - A Rede Social de Timbó, SC" />
+    <meta name="twitter:description" content="Conecte-se com vizinhos, descubra eventos, apoie comércios locais e encontre pessoas especiais em Timbó!" />
     <meta name="twitter:image" content="/og-image.png" />
+    <meta name="twitter:image:alt" content="Timbó Fala - A rede social de Timbó, SC" />
 
-    <!-- Ultra SEO: dados estruturados -->
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://fuwhwxmlqaxkhsviywwg.supabase.co" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Structured Data: WebSite -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "Timbó Fala",
-        "description": "Rede social de Timbó com comunidade, eventos, negócios locais e marketplace.",
+        "alternateName": ["Timbo Fala", "TimboFala"],
+        "url": "https://timbofala.com.br",
+        "description": "Rede social exclusiva de Timbó com comunidade, eventos, negócios locais, marketplace e paquera.",
         "inLanguage": "pt-BR",
         "potentialAction": {
           "@type": "SearchAction",
-          "target": "/search?q={search_term_string}",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://timbofala.com.br/search?q={search_term_string}"
+          },
           "query-input": "required name=search_term_string"
         }
       }
     </script>
+
+    <!-- Structured Data: Organization -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": "Timbó Fala",
-        "url": "/",
-        "logo": "/favicon.png"
+        "url": "https://timbofala.com.br",
+        "logo": "https://timbofala.com.br/favicon.png",
+        "description": "Plataforma social local criada por Bruno Eduardo Ochner para conectar a comunidade de Timbó, SC.",
+        "foundingDate": "2024",
+        "founder": {
+          "@type": "Person",
+          "name": "Bruno Eduardo Ochner"
+        },
+        "areaServed": {
+          "@type": "City",
+          "name": "Timbó",
+          "containedInPlace": {
+            "@type": "State",
+            "name": "Santa Catarina",
+            "containedInPlace": {
+              "@type": "Country",
+              "name": "Brasil"
+            }
+          }
+        },
+        "sameAs": []
       }
     </script>
+
+    <!-- Structured Data: LocalBusiness (Marketplace) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Timbó Fala",
+        "applicationCategory": "SocialNetworkingApplication",
+        "operatingSystem": "Web, Android",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "BRL"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "5",
+          "ratingCount": "100",
+          "bestRating": "5",
+          "worstRating": "1"
+        },
+        "featureList": [
+          "Rede social local",
+          "Marketplace de comércios",
+          "Pedidos online com delivery",
+          "Eventos da cidade",
+          "Sistema de paquera",
+          "Chat em tempo real",
+          "Notificações instantâneas"
+        ]
+      }
+    </script>
+
+    <!-- Structured Data: FAQPage -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "O que é o Timbó Fala?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Timbó Fala é a rede social exclusiva da cidade de Timbó, SC. Aqui você pode conectar-se com vizinhos, descobrir eventos locais, apoiar comércios da região, fazer pedidos online e encontrar pessoas especiais através do Paquera."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "O Timbó Fala é gratuito?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sim! O cadastro e uso da plataforma são 100% gratuitos. Para empresas, cobramos apenas 7% de comissão sobre pedidos concluídos, sem mensalidades ou taxas fixas."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Como funciona o Paquera?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "O Paquera é nosso sistema de encontros local. Os primeiros 10 matches são gratuitos. Após isso, o acesso ilimitado custa R$ 29,90 por mês."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Posso criar uma loja no Timbó Fala?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sim! Qualquer empresa de Timbó pode criar sua loja virtual gratuitamente. Adicione produtos, configure entregas, receba pedidos e pague apenas 7% de comissão sobre vendas concluídas."
+            }
+          }
+        ]
+      }
+    </script>
+
+    <!-- Structured Data: BreadcrumbList -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Início",
+            "item": "https://timbofala.com.br/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Empresas",
+            "item": "https://timbofala.com.br/empresas"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Eventos",
+            "item": "https://timbofala.com.br/events"
+          },
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "name": "Comunidade",
+            "item": "https://timbofala.com.br/community"
+          }
+        ]
+      }
+    </script>
+
+    <!-- Additional SEO -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   </head>
 
   <body>

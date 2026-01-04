@@ -376,18 +376,23 @@ export default function Index() {
                   Baixe o App
                 </h2>
                 <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-                  Disponível em breve para todos os seus dispositivos. 
-                  Use agora pelo navegador!
+                  Acesse pelo navegador ou baixe o app para Android!
                 </p>
                 
                 <div className="flex flex-wrap items-center justify-center gap-4">
-                  <Button variant="outline" size="lg" className="h-14 px-6 gap-3" disabled>
-                    <Smartphone className="w-5 h-5" />
-                    <div className="text-left">
-                      <div className="text-[10px] text-muted-foreground leading-none">Em breve</div>
-                      <div className="font-semibold">Android</div>
-                    </div>
-                  </Button>
+                  <a 
+                    href="/download/timbofala.apk" 
+                    download="timbofala.apk"
+                    className="inline-flex"
+                  >
+                    <Button size="lg" className="h-14 px-6 gap-3 bg-green-600 hover:bg-green-700">
+                      <Smartphone className="w-5 h-5" />
+                      <div className="text-left">
+                        <div className="text-[10px] leading-none opacity-80">Download</div>
+                        <div className="font-semibold">Android APK</div>
+                      </div>
+                    </Button>
+                  </a>
 
                   <Button variant="outline" size="lg" className="h-14 px-6 gap-3" disabled>
                     <Apple className="w-5 h-5" />
@@ -405,6 +410,10 @@ export default function Index() {
                     </div>
                   </Button>
                 </div>
+                
+                <p className="text-xs text-muted-foreground mt-6">
+                  💡 Dica: No Android, permita a instalação de apps de fontes desconhecidas nas configurações.
+                </p>
               </div>
             </div>
           </div>
@@ -427,18 +436,18 @@ export default function Index() {
                 </h2>
                 
                 <p className="text-lg text-muted-foreground leading-relaxed">
-                  Crie sua loja virtual gratuita, receba pedidos online e aumente suas vendas. 
-                  Sem taxas, sem comissões - você fica com 100% do valor!
+                  Crie sua loja virtual, receba pedidos online e aumente suas vendas. 
+                  <strong className="text-foreground"> Pague apenas 7% de comissão sobre pedidos concluídos!</strong>
                 </p>
                 
                 <div className="flex flex-wrap gap-3">
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm">
                     <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>100% Gratuito</span>
+                    <span>Apenas 7% de Comissão</span>
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm">
                     <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>Sem Taxas</span>
+                    <span>Sem Mensalidade</span>
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm">
                     <CheckCircle className="w-4 h-4 text-emerald-600" />
@@ -528,6 +537,9 @@ export default function Index() {
                 </Link>
                 <Link to="/conhecer-empresas" className="hover:text-foreground transition-colors">
                   Para Empresas
+                </Link>
+                <Link to="/termos" className="hover:text-foreground transition-colors">
+                  Termos de Uso
                 </Link>
                 <Link to="/privacy" className="hover:text-foreground transition-colors">
                   Privacidade
