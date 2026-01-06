@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { BusinessDashboard } from '@/components/business/BusinessDashboard';
+import { BusinessDashboardPremium } from '@/components/business/BusinessDashboardPremium';
 import { StoreHoursEditor } from '@/components/business/StoreHoursEditor';
 import { EstimatedTimeEditor } from '@/components/business/EstimatedTimeEditor';
 import { OrderDetailsDialog } from '@/components/business/OrderDetailsDialog';
@@ -707,7 +707,7 @@ export default function BusinessManage() {
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard">
-            <BusinessDashboard 
+            <BusinessDashboardPremium 
               businessId={business.id}
               orders={orders}
               onViewReceipt={viewReceipt}

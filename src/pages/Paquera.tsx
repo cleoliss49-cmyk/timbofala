@@ -340,12 +340,7 @@ export default function Paquera() {
   const handleLike = async (isSuperLike = false) => {
     if (!myPaqueraProfile || currentIndex >= profiles.length) return;
 
-    // Check if user needs to pay
-    if (accessInfo?.needsPayment) {
-      setShowPaymentDialog(true);
-      return;
-    }
-
+    // Access is now unlimited - no payment required
     const targetProfile = profiles[currentIndex];
     setSwipeDirection('right');
 
@@ -355,44 +350,6 @@ export default function Paquera() {
         title: '⭐ Super Like enviado!',
         description: `${targetProfile.user_profile?.full_name} vai ver que você curtiu especialmente!`,
       });
-    }
-
-    // Increment interaction count
-    const { data: interactionResult, error: interactionError } = await supabase.rpc('increment_paquera_interaction', {
-      p_profile_id: myPaqueraProfile.id
-    });
-
-    console.log('Interaction result:', interactionResult, 'error:', interactionError);
-
-    if (interactionError) {
-      console.error('Error incrementing interaction:', interactionError);
-      setSwipeDirection(null);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao processar interação. Tente novamente.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (interactionResult && interactionResult.length > 0) {
-      const result = interactionResult[0];
-      console.log('Interaction check:', result);
-      
-      if (result.limit_reached) {
-        setAccessInfo(prev => prev ? { ...prev, needsPayment: true, canInteract: false } : null);
-        setShowPaymentDialog(true);
-        setSwipeDirection(null);
-        return;
-      }
-      
-      // Update remaining interactions
-      if (accessInfo) {
-        setAccessInfo(prev => prev ? {
-          ...prev,
-          interactionsRemaining: Math.max(0, (prev.interactionsRemaining || 10) - 1)
-        } : null);
-      }
     }
 
     try {
