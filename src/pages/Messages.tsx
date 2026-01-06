@@ -211,8 +211,10 @@ export default function Messages() {
         (payload) => {
           const newMsg = payload.new as Message;
           
-          // Play notification sound
-          playSound();
+          // Only play sound if the chat with this sender is NOT currently open
+          if (!recipientId || newMsg.sender_id !== recipientId) {
+            playSound();
+          }
           
           if (recipientId && newMsg.sender_id === recipientId) {
             setMessages((prev) => [...prev, newMsg]);
