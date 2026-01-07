@@ -395,48 +395,70 @@ export default function Auth() {
       {showTerms && (
         <div className="fixed inset-0 bg-foreground/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-card rounded-2xl shadow-hover max-w-2xl w-full max-h-[80vh] overflow-y-auto p-8 animate-scale-in">
-            <h2 className="text-2xl font-display font-bold mb-4">Termos de Uso e Boas Práticas</h2>
+            <h2 className="text-2xl font-display font-bold mb-4">Termos de Uso</h2>
             
             <div className="prose prose-sm text-muted-foreground space-y-4">
-              <p>
-                <strong>Timbó Fala</strong> é uma plataforma independente desenvolvida por uma pessoa física, 
-                não sendo uma empresa registrada.
-              </p>
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-4">
+                <p className="font-bold text-foreground text-sm">
+                  O Timbó Fala (O Seu Desenvolvedor) é uma plataforma digital independente, idealizada, desenvolvida e mantida por pessoa física, não constituindo empresa, não possuindo CNPJ e não oferecendo garantias comerciais, legais, profissionais ou pessoais.
+                </p>
+                <p className="text-sm mt-2">
+                  A plataforma encontra-se em fase <strong className="text-foreground">BETA</strong>, podendo sofrer alterações, instabilidades, falhas técnicas ou interrupções sem aviso prévio.
+                </p>
+              </div>
 
               <h3 className="text-foreground font-semibold">1. Uso Responsável</h3>
-              <p>
-                Ao utilizar a plataforma, você concorda em:
-              </p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Não publicar conteúdo ilegal, ofensivo ou difamatório</li>
-                <li>Respeitar os demais usuários da comunidade</li>
-                <li>Não compartilhar informações falsas</li>
-                <li>Não fazer spam ou propaganda sem autorização</li>
+                <li>Não publicar conteúdo ilegal, ofensivo, discriminatório ou difamatório</li>
+                <li>Manter comportamento ético, respeitoso e consensual</li>
+                <li>Não praticar assédio, intimidação ou qualquer forma de violência</li>
+                <li>Não divulgar informações falsas ou enganosas</li>
+                <li>Não praticar spam ou autopromoção sem autorização</li>
+              </ul>
+              <p className="text-destructive text-sm font-medium">
+                Violações podem resultar em suspensão, exclusão ou ação judicial.
+              </p>
+
+              <h3 className="text-foreground font-semibold">2. Conteúdo e Responsabilidade</h3>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Todo conteúdo publicado é de responsabilidade exclusiva do usuário</li>
+                <li>A plataforma pode remover conteúdos ou excluir contas sem aviso prévio</li>
+                <li>Não há garantia de recuperação de conteúdo perdido</li>
               </ul>
 
-              <h3 className="text-foreground font-semibold">2. Privacidade</h3>
-              <p>
-                Suas informações pessoais serão tratadas com respeito. Não compartilhamos 
-                seus dados com terceiros sem seu consentimento.
-              </p>
+              <h3 className="text-foreground font-semibold">3. Serviços Pagos</h3>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Alguns recursos podem exigir pagamento via PIX</li>
+                <li>Pagamentos não garantem resultados específicos</li>
+                <li>Não há direito a reembolso por falhas técnicas, salvo exigido por lei</li>
+              </ul>
 
-              <h3 className="text-foreground font-semibold">3. Conteúdo</h3>
-              <p>
-                Você é responsável pelo conteúdo que publica. A plataforma pode remover 
-                conteúdo que viole estes termos sem aviso prévio.
-              </p>
-
-              <h3 className="text-foreground font-semibold">4. Denúncias</h3>
-              <p>
-                Utilize o sistema de denúncias para reportar comportamentos inadequados. 
-                Todas as denúncias serão analisadas.
-              </p>
+              <h3 className="text-foreground font-semibold">4. Projeto BETA</h3>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Pode apresentar erros, instabilidade ou indisponibilidade</li>
+                <li>Funcionalidades podem ser modificadas ou removidas</li>
+                <li>Dados podem ser perdidos; usuário assume responsabilidade por backups</li>
+              </ul>
 
               <h3 className="text-foreground font-semibold">5. Isenção de Responsabilidade</h3>
               <p>
-                A plataforma é fornecida "como está". O desenvolvedor não se responsabiliza 
-                por conteúdos publicados por usuários ou por eventuais problemas técnicos.
+                O desenvolvedor não se responsabiliza por danos físicos, emocionais, materiais, financeiros, 
+                conflitos entre usuários, eventos presenciais ou expectativas frustradas. O usuário indeniza 
+                e isenta integralmente Timbó Fala de todas as reclamações e consequências legais.
               </p>
+
+              <h3 className="text-foreground font-semibold">6. Alterações</h3>
+              <p>
+                Termos podem ser modificados a qualquer momento. O uso contínuo implica aceitação automática.
+              </p>
+
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 mt-4">
+                <p className="font-medium text-foreground text-sm">
+                  Ao se cadastrar, você confirma que compreende que Timbó Fala é um projeto independente, 
+                  BETA, mantido por pessoa física, sem garantias comerciais ou legais, e que aceita todos 
+                  os riscos e responsabilidades exclusivamente.
+                </p>
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end">
