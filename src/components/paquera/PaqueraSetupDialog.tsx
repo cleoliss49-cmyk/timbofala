@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -23,6 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Camera, Loader2, Heart, AlertTriangle } from 'lucide-react';
 import { TIMBO_NEIGHBORHOODS } from '@/lib/neighborhoods';
+import { PaqueraTermsDialog } from './PaqueraTermsDialog';
 
 interface PaqueraSetupDialogProps {
   open: boolean;
@@ -55,6 +55,7 @@ export function PaqueraSetupDialog({
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(existingProfile?.photo_url || null);
   const [acceptedTerms, setAcceptedTerms] = useState(existingProfile?.accepted_terms || false);
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -362,26 +363,37 @@ export function PaqueraSetupDialog({
             </div>
 
             {/* Terms */}
-            <div className="flex items-start space-x-3 p-3 bg-muted/50 rounded-xl">
-              <Checkbox
-                id="terms"
-                checked={acceptedTerms}
-                onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
-              />
-              <div className="grid gap-1.5 leading-none">
-                <label
-                  htmlFor="terms"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Aceito os termos e políticas de privacidade
-                </label>
-                <p className="text-xs text-muted-foreground">
-                  Confirmo ter mais de 18 anos e aceito as regras do Paquera. 
-                  <strong className="block mt-1">Os primeiros 10 pares/matches são gratuitos.</strong> 
-                  Após isso, o acesso ao Paquera custa <strong>R$ 29,90/mês</strong> para uso ilimitado.
-                </p>
+            {!existingProfile && (
+              <div className="p-4 bg-muted/50 rounded-xl">
+                {acceptedTerms ? (
+                  <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                    <Heart className="w-4 h-4" />
+                    <span>Termos de uso aceitos</span>
+                    <button 
+                      type="button"
+                      onClick={() => setShowTermsDialog(true)}
+                      className="text-primary hover:underline ml-2"
+                    >
+                      (ver termos)
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Para criar seu perfil no Paquera, você precisa ler e aceitar os termos de uso.
+                    </p>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setShowTermsDialog(true)}
+                      className="w-full"
+                    >
+                      Ler e Aceitar Termos de Uso
+                    </Button>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -389,7 +401,7 @@ export function PaqueraSetupDialog({
               </Button>
               <Button 
                 type="submit" 
-                disabled={loading || !formData.gender || !formData.looking_for_gender || !formData.sexual_orientation || !formData.city}
+                disabled={loading || !formData.gender || !formData.looking_for_gender || !formData.sexual_orientation || !formData.city || (!existingProfile && !acceptedTerms)}
               >
                 {loading ? (
                   <>
@@ -405,6 +417,16 @@ export function PaqueraSetupDialog({
             </div>
           </form>
         </ScrollArea>
+
+        {/* Terms Dialog */}
+        <PaqueraTermsDialog
+          open={showTermsDialog}
+          onAccept={() => {
+            setAcceptedTerms(true);
+            setShowTermsDialog(false);
+          }}
+          onDecline={() => setShowTermsDialog(false)}
+        />
       </DialogContent>
     </Dialog>
   );
